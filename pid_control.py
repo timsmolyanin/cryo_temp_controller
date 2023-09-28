@@ -26,17 +26,18 @@ class PIDControl(Thread):
         self.mqtt_output_topic = output_value_topic
         self.feedback_value = 0.0
         self.setpoint_value = 0.0
-        self.buffer_size = 60
+        self.buffer_size = 40
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.mov_av_list = list()
         self.median_list = list()
-        self.data_filter_type = 1
+        self.data_filter_type = 2
         self.k = k
         self.b = b
         self.pid_limits_in_percent = limits
-        self.control_loop_period = 0.1
+        self.control_loop_period = 0.05
+        self.pid_auto_mode_value = True
         self.pid = PID(self.kp, self.ki, self.kd, setpoint=self.setpoint_value)
 
 
@@ -48,23 +49,26 @@ class PIDControl(Thread):
         """
         while self.run_flag:
             time.sleep(self.control_loop_period)
-            calculated_counts = self.calculate_control_counts(self.k, self.b, self.setpoint_value)
-            min = calculated_counts - self.calculate_value_of_percent(calculated_counts, self.pid_limits_in_percent)
-            max = calculated_counts + self.calculate_value_of_percent(calculated_counts, self.pid_limits_in_percent)
-            self.pid.setpoint = self.setpoint_value
-            self.pid.output_limits = (min, max)
-            control = self.pid(self.feedback_value)
-            self.update(int(control))
-            match self.data_filter_type:
-                case 0:
-                    # send raw values
-                    self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
-                case 1:
-                    # calculate moving average value and send it to mqtt topic
-                    self.calculate_moving_average(self.buffer_size, self.feedback_value)
-                case 2:
-                    # calculate median value  and send it to mqtt topic
-                    self.calculate_median(self.buffer_size, self.feedback_value)
+            self.pid.auto_mode = self.pid_auto_mode_value
+            if self.pid_auto_mode_value:
+                calculated_counts = self.calculate_control_counts(self.k, self.b, self.setpoint_value)
+                min = calculated_counts - self.calculate_value_of_percent(calculated_counts, self.pid_limits_in_percent)
+                max = calculated_counts + self.calculate_value_of_percent(calculated_counts, self.pid_limits_in_percent)
+                self.pid.setpoint = self.setpoint_value
+                self.pid.output_limits = (min, max)
+                control = self.pid(self.feedback_value)
+                print(self.pid.setpoint, control, self.feedback_value, )
+                self.update(int(control))
+                match self.data_filter_type:
+                    case 0:
+                        # send raw values
+                        self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
+                    case 1:
+                        # calculate moving average value and send it to mqtt topic
+                        self.calculate_moving_average(self.buffer_size, self.feedback_value)
+                    case 2:
+                        # calculate median value  and send it to mqtt topic
+                        self.calculate_median(self.buffer_size, self.feedback_value)
 
     
     def calculate_control_counts(self, k: float, b: float, x: float) -> int:
@@ -328,7 +332,6 @@ class PIDControl(Thread):
         self.median_list.append(value)
         if len(self.median_list) == buffer_size_value:
             median = statistics.median(self.median_list)
-            print("Median: ", round(median, 4))
             self.median_list = list()
             self.set_mqtt_topic_value(self.mqtt_output_topic, round(median, 4))
 
@@ -355,6 +358,13 @@ def test():
     pid_test.mqtt_start()
     pid_test.run_flag = True
     pid_test.start()
+    t = 0
+    while True:
+        time.sleep(0.5)
+        t += 1
+        print(t)
+        if t == 10:
+            pid_test.pid_auto_mode_value = False
         
 
 if __name__ == "__main__":

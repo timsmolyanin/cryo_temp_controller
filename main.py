@@ -6,26 +6,26 @@ import time
 
 
 def main():
-    cc1_kp = 16.0
-    cc1_ki = 3.6
+    cc1_kp = 18.0
+    cc1_ki = 4.6
     cc1_kd = 6.0
     ch1_k = 52.4813
     ch1_b = 35.3409
-    ch1_limits = 2.5
+    ch1_limits = 3.5
 
-    cc2_kp = 16.0
-    cc2_ki = 3.6
+    cc2_kp = 18.0
+    cc2_ki = 4.6
     cc2_kd = 6.0
     ch2_k = 49.8919
     ch2_b = 24.6469
-    ch2_limits = 2.5
+    ch2_limits = 3.5
 
-    hv_kp = 30.0
-    hv_ki = 6.6
-    hv_kd = 6.0
+    hv_kp = 45.0
+    hv_ki = 18.6
+    hv_kd = 8.0
     hv_k = 585.8231
     hv_b = 471.0017
-    hv_limits = 10.0
+    hv_limits = 8.0
 
     broker = "192.168.44.11"
     port = 1883

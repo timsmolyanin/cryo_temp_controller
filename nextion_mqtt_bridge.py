@@ -258,6 +258,10 @@ class NextionMqttBridge(Thread):
                             ch2_temp = round(float(topic_val), 2)
                             cmd = 'mesurments.t2.txt="' + str(ch2_temp) + '"'
                             self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                        case "LDO Power":
+                            power = round(float(topic_val), 2)
+                            cmd = 'mesurments.t16.txt="' + str(power) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
         except Exception as e:
             print(e)
     def mqtt_start(self):
