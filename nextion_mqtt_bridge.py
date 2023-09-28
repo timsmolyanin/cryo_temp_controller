@@ -5,21 +5,35 @@ import random
 import time
 import serial
 import struct
+import yaml
 
+import general_functions
 import list_of_mqtt_topics
 
 
 # The `NextionMqttBridge` class is a thread that connects to a Nextion display via serial
 # communication and bridges it with an MQTT broker.
 class NextionMqttBridge(Thread):
-    def __init__(self, parent=None):
+    def __init__(self, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_passw:str,
+                 comport_name, comport_baudrate, parent=None):
         super(NextionMqttBridge, self).__init__(parent)
-        self.comport = "COM5"
-        self.baudrate = 115200
-        self.comport_open_timeout = 5
-        self.client_id = f'python-mqtt-{random.randint(0, 100)}'
-        self.broker = "192.168.44.11"
-        self.port = 1883
+        self.comport = comport_name
+        self.baudrate = comport_baudrate
+        self.broker = mqtt_broker
+        self.port = mqtt_port
+        self.client_id = f"dialtek-mqtt-{random.randint(0, 100)}"
+        self.comport_open_timeout = 1
+
+        self.aver_buff_size = 5
+        self.ch1_temp_list = list()
+        self.ch2_temp_list = list()
+        self.ch1_fitered_temp_topic = "/devices/FilteredValues/controls/CH1 Temperature"
+        self.ch2_fitered_temp_topic = "/devices/FilteredValues/controls/CH2 Temperature"
+
+        self.ldo_current_value = 0.0
+        self.ldo_voltage_value = 0.0
+        self.ldo_power_value = 0.0
+        self.ldo_power_topic = "/devices/FilteredValues/controls/LDO Power"
 
         params = self.serial_connect(self.comport, self.baudrate)
         self.comport_is_open, self.serial_port = params[0], params[1]
@@ -132,7 +146,8 @@ class NextionMqttBridge(Thread):
 
 
     def nextion_callback(self, data):
-        print(data)
+        data_list = data.split("/")
+        self.set_mqtt_topic_value(f"/devices/{data_list[0]}/controls/{data_list[1]}/on", data_list[-1])
     
 
     def connect_mqtt(self) -> mqtt:
@@ -167,6 +182,10 @@ class NextionMqttBridge(Thread):
         except Exception as e:
             print(e)
     
+    def calculate_ldo_power(self, voltage: float, current: float, topic_name: str):
+        self.ldo_power_value = voltage * current
+        self.set_mqtt_topic_value(topic_name, self.ldo_power_value)
+    
 
     def on_message(self, client, userdata, msg):
         """
@@ -184,10 +203,63 @@ class NextionMqttBridge(Thread):
         """
         topic_name = msg.topic.split("/")
         topic_val = msg.payload.decode("utf-8")
-        param_list = topic_name[-1].split()
-        print(topic_name, topic_val)
-                
-    
+        try:
+            match topic_name[2]:
+                case "HeaterModule":
+                    match topic_name[-1]:
+                        case "MEAS Load Current":
+                            load_current = round(float(topic_val), 3)
+                            self.ldo_current_value = load_current
+                            cmd = 'mesurments.t14.txt="' + str(load_current) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                            self.calculate_ldo_power(self.ldo_voltage_value, self.ldo_current_value, self.ldo_power_topic)
+                        case "Output Voltage State":
+                            if topic_val == "1":
+                                for cmd in general_functions.heater_on_cmds:
+                                    self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                            elif topic_val == "0":
+                                for cmd in general_functions.heater_off_cmds:
+                                    self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                case "MeasureModule":
+                    match topic_name[-1]:
+                        case "CH1 Resistance":
+                            raw_temp = general_functions.convert_resistanc_to_temp(float(topic_val))
+                            self.ch1_temp_list.append(raw_temp[1])
+                            if len(self.ch1_temp_list) == self.aver_buff_size:
+                                general_functions.calculate_moving_average(self.ch1_temp_list, self.aver_buff_size, self.broker, self.ch1_fitered_temp_topic)
+                                self.ch1_temp_list = list()
+                        case "CH2 Resistance":
+                            raw_temp = general_functions.convert_resistanc_to_temp(float(topic_val))
+                            self.ch2_temp_list.append(raw_temp[1])
+                            if len(self.ch2_temp_list) == self.aver_buff_size:
+                                general_functions.calculate_moving_average(self.ch2_temp_list, self.aver_buff_size, self.broker, self.ch2_fitered_temp_topic)
+                                self.ch2_temp_list = list()
+                case "FilteredValues":    
+                    match topic_name[-1]:
+                        case "CH1 Current":
+                            current = round(float(topic_val), 3)
+                            cmd = 'mesurments.t6.txt="' + str(current) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                        case "CH2 Current":
+                            current = round(float(topic_val), 3)
+                            cmd = 'mesurments.t8.txt="' + str(current) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                        case "LDO Voltage":
+                            load_voltage = round(float(topic_val), 3)
+                            self.ldo_voltage_value = load_voltage
+                            cmd = 'mesurments.t12.txt="' + str(load_voltage) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                            self.calculate_ldo_power(self.ldo_voltage_value, self.ldo_current_value, self.ldo_power_topic)
+                        case "CH1 Temperature":
+                            ch1_temp = round(float(topic_val), 2)
+                            cmd = 'mesurments.t0.txt="' + str(ch1_temp) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                        case "CH2 Temperature":
+                            ch2_temp = round(float(topic_val), 2)
+                            cmd = 'mesurments.t2.txt="' + str(ch2_temp) + '"'
+                            self.serial_write(self.comport_is_open, self.serial_port, cmd)
+        except Exception as e:
+            print(e)
     def mqtt_start(self):
         """
         The function `mqtt_start` starts the MQTT client, connects to the MQTT broker, subscribes to
@@ -198,7 +270,7 @@ class NextionMqttBridge(Thread):
         client.loop_start()
 
 
-    def set_mqtt_topic_value(self, topic_name: str, value: int):
+    def set_mqtt_topic_value(self, topic_name: str, value):
         """
         The function sets the value of a specified MQTT topic.
         
@@ -211,10 +283,40 @@ class NextionMqttBridge(Thread):
         """
         topic = topic_name
         publish.single(topic, str(value), hostname=self.broker)
+    
+    def calculate_moving_average(self, buffer_size: int, value: float):
+        """
+        The `calculate_moving_average` function calculates the moving average of a given value using a
+        buffer of a specified size.
+        
+        :param buffer_size: The `buffer_size` parameter is an integer that represents the size of the buffer
+        or window for calculating the moving average. It determines how many values will be included in the
+        calculation of the moving average
+        :type buffer_size: int
+        :param value: The `value` parameter is a float value that represents the current value to be added
+        to the moving average calculation
+        :type value: float
+        """
+        sma = 0
+        tmp = 0
+        buffer_size_value = buffer_size
+        self.mov_av_list.append(value)
+        if len(self.mov_av_list) == buffer_size_value:
+            for val in self.mov_av_list:
+                tmp = tmp + val
+            sma = tmp / buffer_size_value
+            self.mov_av_list = list()
+            print("Moving Average: ", round(sma, 4))
+            self.set_mqtt_topic_value(self.mqtt_output_topic, round(sma, 4))
 
 
 def test():
-    nextion_mqtt_bridge = NextionMqttBridge()
+    comport = "COM5"
+    baudrate = 115200
+    broker = "192.168.44.11"
+    port = 1883
+    nextion_mqtt_bridge = NextionMqttBridge(mqtt_port=port, mqtt_broker=broker, mqtt_passw=None, mqtt_user=None,
+                                            comport_baudrate=baudrate, comport_name=comport)
     nextion_mqtt_bridge.mqtt_start()
     nextion_mqtt_bridge.start()
 

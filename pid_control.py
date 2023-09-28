@@ -13,16 +13,17 @@ import statistics
 # and port, with setpoint, feedback, and control topics, and specified PID parameters.
 class PIDControl(Thread):
     def __init__(self, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_passw:str,
-                  kp:float, ki:float, kd:float, setpoint_topic:str, feedback_topic:str, control_topic:str,  parent=None):
+                    kp:float, ki:float, kd:float, setpoint_topic:str, feedback_topic:str,
+                    output_value_topic: str,  control_topic:str, k: float, b: float, limits: float,  parent=None):
         super(PIDControl, self).__init__(parent)
         self.run_flag = False
         self.broker = mqtt_broker
         self.port = mqtt_port
-        self.client_id = f'python-mqtt-{random.randint(0, 100)}'
+        self.client_id = f"dialtek-mqtt-{random.randint(0, 100)}"
         self.mqtt_setpoint_topic = setpoint_topic
         self.mqtt_feedback_topic = feedback_topic
         self.mqtt_control_topic = control_topic
-        self.mqtt_output_topic = "/devices/FilteredValues/controls/CH2 Current"
+        self.mqtt_output_topic = output_value_topic
         self.feedback_value = 0.0
         self.setpoint_value = 0.0
         self.buffer_size = 60
@@ -32,8 +33,10 @@ class PIDControl(Thread):
         self.mov_av_list = list()
         self.median_list = list()
         self.data_filter_type = 1
-        self.pid_limits_in_percent = 2.5
-        self.control_loop_period = 0.05
+        self.k = k
+        self.b = b
+        self.pid_limits_in_percent = limits
+        self.control_loop_period = 0.1
         self.pid = PID(self.kp, self.ki, self.kd, setpoint=self.setpoint_value)
 
 
@@ -45,7 +48,7 @@ class PIDControl(Thread):
         """
         while self.run_flag:
             time.sleep(self.control_loop_period)
-            calculated_counts = self.calculate_control_counts(self.setpoint_value)
+            calculated_counts = self.calculate_control_counts(self.k, self.b, self.setpoint_value)
             min = calculated_counts - self.calculate_value_of_percent(calculated_counts, self.pid_limits_in_percent)
             max = calculated_counts + self.calculate_value_of_percent(calculated_counts, self.pid_limits_in_percent)
             self.pid.setpoint = self.setpoint_value
@@ -64,7 +67,7 @@ class PIDControl(Thread):
                     self.calculate_median(self.buffer_size, self.feedback_value)
 
     
-    def calculate_control_counts(self, x: float) -> int:
+    def calculate_control_counts(self, k: float, b: float, x: float) -> int:
         """
         The function calculates the control counts based on a given input value.
         
@@ -72,7 +75,7 @@ class PIDControl(Thread):
         :type x: float
         :return: an integer value.
         """
-        y = 49.8919 * x + 24.6469
+        y = k * x + b
         return int(y)
 
 
@@ -303,7 +306,6 @@ class PIDControl(Thread):
                 tmp = tmp + val
             sma = tmp / buffer_size_value
             self.mov_av_list = list()
-            print("Moving Average: ", round(sma, 4))
             self.set_mqtt_topic_value(self.mqtt_output_topic, round(sma, 4))
     
 
@@ -328,7 +330,7 @@ class PIDControl(Thread):
             median = statistics.median(self.median_list)
             print("Median: ", round(median, 4))
             self.median_list = list()
-            # self.set_mqtt_topic_value(self.mqtt_output_topic, round(median, 4))
+            self.set_mqtt_topic_value(self.mqtt_output_topic, round(median, 4))
 
 
 
@@ -336,14 +338,20 @@ def test():
     kp = 16.0
     ki = 3.6
     kd = 6.0
+    k = 52.4813
+    b = 35.3409
+    limi = 2.5
     broker = "192.168.44.11"
     port = 1883
-    mqtt_feedback_topic = "/devices/MeasureModule/controls/CH2 Current"
-    mqtt_setpoint_topic = "/devices/MeasureModuleSetpoints/controls/CH2 Current Setpoint"
-    mqtt_control_topic = "/devices/MeasureModule/controls/CH2 DAC/on"
+    mqtt_feedback_topic = "/devices/MeasureModule/controls/CH1 Current"
+    mqtt_setpoint_topic = "/devices/MeasureModuleSetpoints/controls/CH1 Current Setpoint"
+    mqtt_control_topic = "/devices/MeasureModule/controls/CH1 DAC/on"
+    mqtt_output_topic = "/devices/FilteredValues/controls/CH1 Current"
+
     pid_test = PIDControl(broker, port, kp=kp, ki=ki, kd=kd, setpoint_topic=mqtt_setpoint_topic,
-                          feedback_topic=mqtt_feedback_topic, control_topic=mqtt_control_topic,
-                          mqtt_user=None, mqtt_passw=None)
+                            feedback_topic=mqtt_feedback_topic, control_topic=mqtt_control_topic,
+                            output_value_topic=mqtt_output_topic, k=k, b=b, limits=limi,
+                            mqtt_user=None, mqtt_passw=None)
     pid_test.mqtt_start()
     pid_test.run_flag = True
     pid_test.start()
