@@ -16,4 +16,6 @@ list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/MEAS DAC Vout", 0),
                         ("/devices/FilteredValues/controls/CH2 Current", 0),
                         ("/devices/FilteredValues/controls/LDO Power", 0),
                         ("/devices/FilteredValues/controls/LDO Voltage", 0),
+                        ("/devices/MeasureModuleSetpoints/controls/CH1 State", 0),
+                        ("/devices/MeasureModuleSetpoints/controls/CH2 State", 0)
                                  ]

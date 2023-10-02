@@ -18,6 +18,27 @@ heater_off_cmds = ["mesurments.q0.picc=20", "mesurments.b3.picc=20", "mesurments
                   "mesurments.t17.pco=50744", "mesurments.t18.pco=50744", "mesurments.t19.pco=50744",
                   "mesurments.b3.picc2=21"]
 
+ch1_current_off_cmds = ["mesurments.t6.picc=15", "mesurments.t6.pco=50744", "mesurments.t0.picc=13",
+                        "mesurments.t0.pco=50744", "mesurments.t7.picc=14", "mesurments.t7.pco=50744",
+                        "mesurments.t10.pco=50744", "mesurments.t4.pco=50744", "mesurments.t1.pco=50744",
+                        "mesurments.t1.picc=12"]
+
+ch1_current_on_cmds = ["mesurments.t6.picc=14", "mesurments.t6.pco=13765", "mesurments.t0.picc=12", 
+                       "mesurments.t0.pco=31", "mesurments.t7.picc=14", "mesurments.t7.pco=34222",
+                       "mesurments.t10.pco=34222", "mesurments.t4.pco=29631", "mesurments.t1.pco=29631",
+                        "mesurments.t1.picc=12"]
+
+ch2_current_off_cmds = ["mesurments.t8.picc=15", "mesurments.t8.pco=50744", "mesurments.t2.picc=13",
+                        "mesurments.t2.pco=50744", "mesurments.t9.picc=14", "mesurments.t9.pco=50744",
+                        "mesurments.t3.picc=12", "mesurments.t3.pco=50744", "mesurments.t11.pco=50744",
+                        "mesurments.t5.pco=50744"]
+
+
+ch2_current_on_cmds = ["mesurments.t8.picc=14", "mesurments.t8.pco=13765", "mesurments.t2.picc=12",
+                       "mesurments.t2.pco=31", "mesurments.t9.picc=14", "mesurments.t9.pco=34222",
+                        "mesurments.t3.picc=12", "mesurments.t3.pco=29631", "mesurments.t11.pco=34222",
+                        "mesurments.t5.pco=29631"]
+
 
 def calculate_moving_average(var_list, buffer_size: int, mqtt_host: str, topic: str):
     sma = 0

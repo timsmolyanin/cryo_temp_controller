@@ -147,8 +147,16 @@ class NextionMqttBridge(Thread):
 
     def nextion_callback(self, data):
         data_list = data.split("/")
+        print(data_list)
         self.set_mqtt_topic_value(f"/devices/{data_list[0]}/controls/{data_list[1]}/on", data_list[-1])
     
+
+    def error_handler(self, error_msg):
+        print(error_msg)
+        port_is_open = False
+        params = self.serial_connect(self.comport, self.baudrate)
+        port_is_open, serial_port_obj = params[0], params[1]
+
 
     def connect_mqtt(self) -> mqtt:
         """
@@ -262,6 +270,22 @@ class NextionMqttBridge(Thread):
                             power = round(float(topic_val), 2)
                             cmd = 'mesurments.t16.txt="' + str(power) + '"'
                             self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                case "MeasureModuleSetpoints":
+                    match topic_name[-1]:
+                        case "CH1 State":
+                            if topic_val == "1":
+                                for cmd in general_functions.ch1_current_on_cmds:
+                                    self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                            elif topic_val == "0":
+                                for cmd in general_functions.ch1_current_off_cmds:
+                                    self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                        case "CH2 State":
+                            if topic_val == "1":
+                                for cmd in general_functions.ch2_current_on_cmds:
+                                    self.serial_write(self.comport_is_open, self.serial_port, cmd)
+                            elif topic_val == "0":
+                                for cmd in general_functions.ch2_current_off_cmds:
+                                    self.serial_write(self.comport_is_open, self.serial_port, cmd)
         except Exception as e:
             print(e)
     def mqtt_start(self):
