@@ -352,6 +352,7 @@ class PIDControl(Thread):
                             self.mqtt_set_feedback(topic_val)
                         case "Output Voltage State":
                             self.set_control_value_state(bool(int(topic_val)))
+                            self.set_mqtt_topic_value("/devices/FilteredValues/controls/LDO Voltage/on", "0.0")
                 case "HeaterModuleSetpoints":
                     match topic_name[-1]:
                         case "LDO Voltage Setpoint":
@@ -464,7 +465,7 @@ class PIDControl(Thread):
                 tmp = tmp + val
             sma = tmp / buffer_size_value
             self.mov_av_list = list()
-            self.set_mqtt_topic_value(self.mqtt_output_topic, round(sma, 4))
+            self.set_mqtt_topic_value(self.mqtt_output_topic, round(sma, 3))
     
 
     def calculate_median(self, buffer_size: int, value: float):
@@ -487,28 +488,30 @@ class PIDControl(Thread):
         if len(self.median_list) == buffer_size_value:
             median = statistics.median(self.median_list)
             self.median_list = list()
-            self.set_mqtt_topic_value(self.mqtt_output_topic, round(median, 4))
+            self.set_mqtt_topic_value(self.mqtt_output_topic, round(median, 3))
     
 
     def set_voltage_with_ramprate(self, ramprate: float, setpoint: float):
         k = 585.8231
         b = 471.0017
-
+        self.set_pwm_value(self.setpoint_value)
         steps_count = 0
         setpoint_counts = self.calculate_control_counts(k, b, self.setpoint_value)
-        ramp_rate_counts = self.calculate_control_counts(k, b, self.__ramprate_value)
-        print(f"volt v sek: {self.__ramprate_value}, counts = {ramp_rate_counts}")
-        steps_count = self.setpoint_value / self.__ramprate_value
-        print("Setpoint counts: ", setpoint_counts)
-        print("asfsaf: ", setpoint_counts / self.setpoint_value * self.__ramprate_value)
+        actual_voltage_counts = self.calculate_control_counts(k, b, self.feedback_value)
+        if self.feedback_value > self.setpoint_value:
+            steps_count = int((self.feedback_value - self.setpoint_value) / self.__ramprate_value)
+        elif self.feedback_value < self.setpoint_value:
+            steps_count = int((self.setpoint_value - self.feedback_value) / self.__ramprate_value)
         while steps_count:
             if self.__control_value_state:
-                print("Set voltage counts ", ramp_rate_counts, "setp: ", steps_count)
-                self.set_mqtt_topic_value(self.mqtt_control_topic, ramp_rate_counts)
-                steps_count -= 1
-                ramp_rate_counts += setpoint_counts / self.setpoint_value * self.__ramprate_value
+                if self.feedback_value > self.setpoint_value:
+                    actual_voltage_counts -= setpoint_counts / self.setpoint_value * self.__ramprate_value
+                elif self.feedback_value < self.setpoint_value:
+                    actual_voltage_counts += setpoint_counts / self.setpoint_value * self.__ramprate_value
+                self.set_mqtt_topic_value(self.mqtt_control_topic, actual_voltage_counts)
                 self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
-
+                print(f"Set voltage counts: {actual_voltage_counts}, steps {steps_count}")
+                steps_count -= 1
                 time.sleep(1)
             else:
                 break
@@ -518,6 +521,23 @@ class PIDControl(Thread):
         else:
             self.__pid_auto_mode_value = False
             self.__ramprate_func_en = False
+        
+        self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
+    
+
+    def set_pwm_value(self, ldo_voltage_setpoint: float):
+        pwm_value_topic = "/devices/HeaterModule/controls/SET SW REG Duty/on"
+        k = 2.08333
+        if ldo_voltage_setpoint >= 22:
+            pwm_value = int(k * ldo_voltage_setpoint) + 10
+        elif ldo_voltage_setpoint < 22:
+            pwm_value = int(k * ldo_voltage_setpoint) + 2
+        elif ldo_voltage_setpoint >= 38:
+            pwm_value = 100
+            
+        if pwm_value > 100:
+            pwm_value = 100
+        self.set_mqtt_topic_value(pwm_value_topic, pwm_value)
 
 
 def test():

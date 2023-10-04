@@ -192,7 +192,7 @@ class NextionMqttBridge(Thread):
     
     def calculate_ldo_power(self, voltage: float, current: float, topic_name: str):
         self.ldo_power_value = voltage * current
-        self.set_mqtt_topic_value(topic_name, self.ldo_power_value)
+        self.set_mqtt_topic_value(topic_name, round(self.ldo_power_value, 3))
     
 
     def on_message(self, client, userdata, msg):

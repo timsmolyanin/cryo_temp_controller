@@ -7,8 +7,6 @@ import random
 import time
 import queue
 
-import heater_voltage_ramp
-
 
 q = queue.Queue()
 
@@ -92,7 +90,7 @@ def main():
     hv_kd = 8.0
     hv_k = 585.8231
     hv_b = 471.0017
-    hv_limits = 8.0
+    hv_limits = 5.5
 
     broker = "192.168.44.11"
     port = 1883
