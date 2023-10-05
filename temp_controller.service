@@ -1,0 +1,12 @@
+[Unit]
+Description=Cryo temperature controller python application service
+After=multi-user.target
+
+[Service]
+User=root
+Type=simple
+Restart=always
+ExecStart=/root/wk/py310/bin/python /root/wk/dialtek/cryo_temp_controller/main.py
+
+[Install]
+WantedBy=multi-user.target

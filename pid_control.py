@@ -15,22 +15,23 @@ mqtt_topics_list = [("/devices/HeaterModule/controls/MEAS LDO REG Vout", 0),
                            ("/devices/HeaterModuleSetpoints/controls/LDO Voltage RampRate", 0),
                            ("/devices/HeaterModuleSetpoints/controls/LDO Voltage Setpoint", 0),
                            ("/devices/HeaterModuleSetpoints/controls/LDO Voltage MAX", 0),
-                           ("/devices/HeaterModuleSetpoints/controls/LDO PID Kp", 0),
-                           ("/devices/HeaterModuleSetpoints/controls/LDO PID Ki", 0),
-                           ("/devices/HeaterModuleSetpoints/controls/LDO PID Kd", 0),
+                           ("/devices/MeasureModuleSetpoints/controls/PID Kp", 0),
+                           ("/devices/MeasureModuleSetpoints/controls/PID Ki", 0),
+                           ("/devices/MeasureModuleSetpoints/controls/PID Kd", 0),
                            ("/devices/HeaterModuleSetpoints/controls/LDO Current Setpoint", 0),
                            ("/devices/HeaterModuleSetpoints/controls/LDO Current MAX", 0),
-                           ("/devices/HeaterModuleSetpoints/controls/Data Filter Type", 0),
-                           ("/devices/HeaterModuleSetpoints/controls/Data Filter BufferSize", 0),
+                           ("/devices/MeasureModuleSetpoints/controls/Data Filter Type", 0),
+                           ("/devices/MeasureModuleSetpoints/controls/Data Filter BufferSize", 0),
                            ("/devices/MeasureModuleSetpoints/controls/CH1 Current Setpoint", 0),
                            ("/devices/MeasureModuleSetpoints/controls/CH2 Current Setpoint", 0),
                            ("/devices/MeasureModuleSetpoints/controls/CH1 State", 0),
                            ("/devices/MeasureModuleSetpoints/controls/CH2 State", 0),
                            ("/devices/MeasureModule/controls/CH1 Current", 0),
                            ("/devices/MeasureModule/controls/CH2 Current", 0),
-                           ("/devices/HeaterModule/controls/Output Voltage State", 0)
+                           ("/devices/HeaterModule/controls/Output Voltage State", 0),
+                           ("/devices/FilteredValues/controls/CH1 Temperature", 0),
+                           ("/devices/MeasureModuleSetpoints/controls/CH1 Temperature Setpoint", 0),
                            ]
-
 
 # The `PIDControl` class is a threaded class that implements a PID controller for a given MQTT broker
 # and port, with setpoint, feedback, and control topics, and specified PID parameters.
@@ -65,6 +66,9 @@ class PIDControl(Thread):
         self.__ramprate_func_is_available = False
         self.__control_value_state = False
         self.__mqtt_topic_to_subscribe = mqtt_topics_list
+        self.__calculate_pid_limits = True
+        self.__pid_min = 0.0
+        self.__pid_max = 0.0
 
         self.__pid = PID(self.__kp, self.__ki, self.__kd, setpoint=self.setpoint_value)
 
@@ -82,25 +86,25 @@ class PIDControl(Thread):
         """
         logger.debug(f"Regulator {self.name} is started")
         while self.run_flag:
-            # print(self.name, self.ramprate_func_is_available, self.ramprate_func_en)
             time.sleep(self.__control_loop_period)
             if self.__ramprate_func_is_available:
-                # print(self.name, self.ramprate_func_is_available, self.ramprate_func_en)
                 if self.__ramprate_func_en:
                     self.set_voltage_with_ramprate(self.__ramprate_value, self.setpoint_value)
             
             self.__pid.auto_mode = self.__pid_auto_mode_value
-            # print(self.name, self.__pid_auto_mode_value)
             if self.__pid_auto_mode_value:
-                calculated_counts = self.calculate_control_counts(self.__k, self.__b, self.setpoint_value)
-                min = calculated_counts - self.calculate_value_of_percent(calculated_counts, self.__pid_limits_in_percent)
-                max = calculated_counts + self.calculate_value_of_percent(calculated_counts, self.__pid_limits_in_percent)
+                if self.__calculate_pid_limits:
+                    calculated_counts = self.calculate_control_counts(self.__k, self.__b, self.setpoint_value)
+                    self.__pid_min = calculated_counts - self.calculate_value_of_percent(calculated_counts, self.__pid_limits_in_percent)
+                    self.__pid_max = calculated_counts + self.calculate_value_of_percent(calculated_counts, self.__pid_limits_in_percent)
                 self.__pid.setpoint = self.setpoint_value
-                self.__pid.output_limits = (min, max)
+                self.__pid.output_limits = (self.__pid_min, self.__pid_max)
                 median_feedback_value = self.filter_data_before_pid(self.feedback_value)
                 if isinstance(median_feedback_value, float):
                     control = self.__pid(median_feedback_value)
                     self.update(int(control))
+                    if self.name == "Temperature 1":
+                        print(f"Temp1 Setpoint {self.setpoint_value}, feedback value {self.feedback_value}, set voltage {control}")
                 match self.__data_filter_type:
                     case 0:
                         # send raw values
@@ -147,6 +151,15 @@ class PIDControl(Thread):
         """
         value = (value * percent) / 100
         return int(value)
+    
+
+    def enable_calculate_pid_limits(self, state: bool):
+        self.__calculate_pid_limits = state
+
+
+    def set_pid_limits(self, min: float, max: float):
+        self.__pid_min = min
+        self.__pid_max = max
     
     def set_mqtt_topics_list(self, topics_list: list):
         if isinstance(topics_list, list):
@@ -286,7 +299,7 @@ class PIDControl(Thread):
         if isinstance(loop_period, float):
             self.__control_loop_period = loop_period
         else:
-            raise TypeError(f"Type for loop_period must be integer, not {type(loop_period)}!")
+            raise TypeError(f"Type for loop_period must be float, not {type(loop_period)}!")
 
 
     def set_pid_limits_in_percent(self, limits: float):
@@ -320,10 +333,8 @@ class PIDControl(Thread):
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
                 logger.debug(f"{whois} Connected to MQTT Broker!")
-                # print("Connected to MQTT Broker!")
             else:
                 logger.debug(f"{whois} Failed to connect, return code {rc}")
-                # print("Failed to connect, return code %d\n", rc)
 
         mqtt_client = mqtt.Client(self.client_id)
         mqtt_client.on_connect = on_connect
@@ -340,9 +351,7 @@ class PIDControl(Thread):
         the MQTT broker and subscribe to topics
         :type client: mqtt
         """
-        # topics_list = [(self.mqtt_feedback_topic, 0), (self.mqtt_setpoint_topic , 0)]
         topics_list = self.__mqtt_topic_to_subscribe
-        # print(topics_list)
         client.subscribe(topics_list) 
         client.on_message = self.on_message
     
@@ -390,35 +399,10 @@ class PIDControl(Thread):
                             self.set_ramprate_value(float(topic_val))
                         case "LDO Voltage MAX":
                             pass
-                        case "LDO PID Kp":
-                            self.set_pid_kp_value(float(topic_val))
-                        case "LDO PID Ki":
-                            self.set_pid_ki_value(float(topic_val))
-                        case "LDO PID Kd":
-                            self.set_pid_kd_value(float(topic_val))
                         case "LDO Current Setpoint":
                             pass
                         case "LDO Current MAX":
                             pass
-                        case "Data Filter Type":
-                            self.set_data_filter_type(int(topic_val))
-                        case "Data Filter BufferSize":
-                            self.set_buffer_size(int(topic_val))
-        elif self.name == "CH1 Current":
-            match topic_name[2]:
-                case "MeasureModuleSetpoints":
-                    match topic_name[-1]:
-                        case "CH1 Current Setpoint":
-                            self.mqtt_set_setpoint(topic_val)
-                        case "CH1 State":
-                            self.set_control_value_state(bool(int(topic_val)))
-                            self.set_pid_automode_value(bool(int(topic_val)))
-                            if not bool(int(topic_val)):
-                                self.set_mqtt_topic_value("/devices/FilteredValues/controls/CH1 Current/on", "0.0")
-                case "MeasureModule":
-                    match topic_name[-1]:
-                        case "CH1 Current":
-                            self.mqtt_set_feedback(topic_val)
         elif self.name == "CH2 Current":
             match topic_name[2]:
                 case "MeasureModuleSetpoints":
@@ -428,10 +412,48 @@ class PIDControl(Thread):
                         case "CH2 State":
                             self.set_control_value_state(bool(int(topic_val)))
                             self.set_pid_automode_value(bool(int(topic_val)))
-                            self.set_mqtt_topic_value("/devices/FilteredValues/controls/CH2 Current/on", "0.0")
+                            if not bool(int(topic_val)):
+                                self.set_mqtt_topic_value("/devices/FilteredValues/controls/CH2 Current/on", "0.0")
                 case "MeasureModule":
                     match topic_name[-1]:
                         case "CH2 Current":
+                            self.mqtt_set_feedback(topic_val)
+        elif self.name == "CH1 Current":
+            match topic_name[2]:
+                case "MeasureModuleSetpoints":
+                    match topic_name[-1]:
+                        case "CH1 Current Setpoint":
+                            self.mqtt_set_setpoint(topic_val)
+                        case "CH1 State":
+                            self.set_control_value_state(bool(int(topic_val)))
+                            self.set_pid_automode_value(bool(int(topic_val)))
+                            self.set_mqtt_topic_value("/devices/FilteredValues/controls/CH1 Current/on", "0.0")
+                case "MeasureModule":
+                    match topic_name[-1]:
+                        case "CH1 Current":
+                            self.mqtt_set_feedback(topic_val)
+        elif self.name == "Temperature 1":
+            match topic_name[2]:
+                case "MeasureModuleSetpoints":
+                    match topic_name[-1]:
+                        case "CH1 Temperature Setpoint":
+                            self.mqtt_set_setpoint(topic_val)
+                        case "CH1 State":
+                            self.set_control_value_state(bool(int(topic_val)))
+                            self.set_pid_automode_value(bool(int(topic_val)))
+                        case "PID Kp":
+                            self.set_pid_kp_value(float(topic_val))
+                        case "PID Ki":
+                            self.set_pid_ki_value(float(topic_val))
+                        case "PID Kd":
+                            self.set_pid_kd_value(float(topic_val))
+                        case "Data Filter Type":
+                            self.set_data_filter_type(int(topic_val))
+                        case "Data Filter BufferSize":
+                            self.set_buffer_size(int(topic_val))
+                case "FilteredValues":
+                    match topic_name[-1]:
+                        case "CH1 Temperature":
                             self.mqtt_set_feedback(topic_val)
                 
     def mqtt_start(self):
@@ -517,9 +539,8 @@ class PIDControl(Thread):
     
 
     def set_voltage_with_ramprate(self, ramprate: float, setpoint: float):
-        k = 585.8231
-        b = 471.0017
-        # self.set_pwm_value(self.setpoint_value)
+        k = 593.7
+        b = 522.13
         steps_count = 0
         setpoint_counts = self.calculate_control_counts(k, b, self.setpoint_value)
         actual_voltage_counts = self.calculate_control_counts(k, b, self.feedback_value)

@@ -24,8 +24,8 @@ ch1_current_off_cmds = ["mesurments.t6.picc=15", "mesurments.t6.pco=50744", "mes
                         "mesurments.t1.picc=12"]
 
 ch1_current_on_cmds = ["mesurments.t6.picc=14", "mesurments.t6.pco=13765", "mesurments.t0.picc=12", 
-                       "mesurments.t0.pco=31", "mesurments.t7.picc=14", "mesurments.t7.pco=34222",
-                       "mesurments.t10.pco=34222", "mesurments.t4.pco=29631", "mesurments.t1.pco=29631",
+                       "mesurments.t0.pco=31", "mesurments.t7.picc=14", "mesurments.t7.pco=13765",
+                       "mesurments.t10.pco=13765", "mesurments.t4.pco=31", "mesurments.t1.pco=31",
                         "mesurments.t1.picc=12"]
 
 ch2_current_off_cmds = ["mesurments.t8.picc=15", "mesurments.t8.pco=50744", "mesurments.t2.picc=13",
@@ -34,8 +34,8 @@ ch2_current_off_cmds = ["mesurments.t8.picc=15", "mesurments.t8.pco=50744", "mes
 
 
 ch2_current_on_cmds = ["mesurments.t8.picc=14", "mesurments.t8.pco=13765", "mesurments.t2.picc=12",
-                       "mesurments.t2.pco=31", "mesurments.t9.picc=14", "mesurments.t9.pco=34222",
-                        "mesurments.t11.pco=34222", "mesurments.t5.pco=29631"]
+                       "mesurments.t2.pco=31", "mesurments.t9.picc=14", "mesurments.t9.pco=13765",
+                        "mesurments.t11.pco=13765", "mesurments.t5.pco=31"]
 
 
 def calculate_moving_average(var_list, buffer_size: int, mqtt_host: str, topic: str):

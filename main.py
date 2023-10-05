@@ -97,6 +97,13 @@ def main():
     hv_b = 522.13
     hv_limits = 20.5
 
+    t1_kp = 4
+    t1_ki = 0.3
+    t1_kd = 0.0
+    t1_k = 1
+    t1_b = 1
+    t1_limits = 1
+
     broker = "192.168.44.11"
     port = 1883
     comport = "COM5"
@@ -117,6 +124,11 @@ def main():
     heater_voltage_mqtt_control_topic = "/devices/HeaterModule/controls/LDO Counts Set/on"
     heater_voltage_mqtt_output_topic = "/devices/FilteredValues/controls/LDO Voltage"
 
+    ch1_temp_mqtt_feedback_topic = "/devices/FilteredValues/controls/CH1 Temperature"
+    ch1_temp_mqtt_setpoint_topic = "/devices/MeasureModuleSetpoints/controls/CH1 Temperature Setpoint"
+    ch1_temp_mqtt_control_topic = "/devices/HeaterModuleSetpoints/controls/LDO Voltage Setpoint/on"
+    ch1_temp_mqtt_output_topic = "/devices/FilteredValues/controls/CH1 Temperature PID"
+
     ch1_current_pid = pid_control.PIDControl(broker, port, kp=cc1_kp, ki=cc1_ki, kd=cc1_kd, setpoint_topic=ch1_current_mqtt_setpoint_topic,
                             feedback_topic=ch1_current_mqtt_feedback_topic, control_topic=ch1_current_mqtt_control_topic,
                             output_value_topic=ch1_current_mqtt_output_topic, k=ch1_k, b=ch1_b, limits=ch1_limits,
@@ -129,9 +141,14 @@ def main():
     
     heater_voltage_pid = pid_control.PIDControl(broker, port, kp=hv_kp, ki=hv_ki, kd=hv_kd, setpoint_topic=heater_voltage_mqtt_setpoint_topic,
                             feedback_topic=heater_voltage_mqtt_feedback_topic, control_topic=heater_voltage_mqtt_control_topic,
-                            output_value_topic=heater_voltage_mqtt_output_topic, k=hv_k, b=hv_b, limits=hv_limits,
+                            output_value_topic=heater_voltage_mqtt_output_topic, k=hv_k, b=hv_b, limits=t1_limits,
                             mqtt_user=None, mqtt_passw=None)
     
+    ch1_temp_pid = pid_control.PIDControl(broker, port, kp=t1_kp, ki=t1_ki, kd=t1_kd, setpoint_topic=ch1_temp_mqtt_setpoint_topic,
+                            feedback_topic=ch1_temp_mqtt_feedback_topic, control_topic=ch1_temp_mqtt_control_topic,
+                            output_value_topic=ch1_temp_mqtt_output_topic, k=t1_k, b=t1_b, limits=hv_limits,
+                            mqtt_user=None, mqtt_passw=None)
+
     nextion_mqtt_thread = nextion_mqtt_bridge.NextionMqttBridge(mqtt_port=port, mqtt_broker=broker, mqtt_passw=None, mqtt_user=None,
                                             comport_baudrate=baudrate, comport_name=comport)
     
@@ -143,7 +160,6 @@ def main():
     ch1_current_pid.name = "CH1 Current"
     ch1_current_pid.set_ramprate_func_available(False)
     ch1_current_pid.set_ramprate_func_en(False)
-    # ch1_current_pid.set_mqtt_topics_list(mqtt_topics_list)
     ch1_current_pid.start()
 
     ch2_current_pid.mqtt_start()
@@ -151,7 +167,6 @@ def main():
     ch2_current_pid.name = "CH2 Current"
     ch2_current_pid.set_ramprate_func_available(False)
     ch2_current_pid.set_ramprate_func_en(False)
-    # ch2_current_pid.set_mqtt_topics_list(mqtt_topics_list)
     ch2_current_pid.start()
 
     heater_voltage_pid.mqtt_start()
@@ -159,14 +174,25 @@ def main():
     heater_voltage_pid.name = "Heater"
     heater_voltage_pid.set_ramprate_func_available(False)
     heater_voltage_pid.set_ramprate_func_en(False)
-    # heater_voltage_pid.set_mqtt_topics_list(mqtt_topics_list)
     heater_voltage_pid.start()
+
+    ch1_temp_pid.mqtt_start()
+    ch1_temp_pid.run_flag = True
+    ch1_temp_pid.name = "Temperature 1"
+    ch1_temp_pid.set_ramprate_func_available(False)
+    ch1_temp_pid.set_ramprate_func_en(False)
+    ch1_temp_pid.enable_calculate_pid_limits(False)
+    ch1_temp_pid.set_pid_limits(0, 43)
+    ch1_temp_pid.set_control_loop_period(1.0)
+    ch1_temp_pid.start()
+    
 
     while True:
         time.sleep(0.5)
         cmd = q.get()
         if cmd[0] == "CH1 State":
             ch1_current_pid.set_pid_automode_value(bool(cmd[1]))
+            ch1_temp_pid.set_pid_automode_value(bool(cmd[1]))
         elif cmd[0] == "CH2 State":
             ch2_current_pid.set_pid_automode_value(bool(cmd[1]))
         elif cmd[0] == "Output Voltage State":
