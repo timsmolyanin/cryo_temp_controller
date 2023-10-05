@@ -37,6 +37,8 @@ ch2_current_on_cmds = ["mesurments.t8.picc=14", "mesurments.t8.pco=13765", "mesu
                        "mesurments.t2.pco=31", "mesurments.t9.picc=14", "mesurments.t9.pco=13765",
                         "mesurments.t11.pco=13765", "mesurments.t5.pco=31"]
 
+welcome_cmds = ["welcome.progress.en=0", "welcome.q0.picc=58", "welcome.q1.picc=32"]
+
 
 def calculate_moving_average(var_list, buffer_size: int, mqtt_host: str, topic: str):
     sma = 0

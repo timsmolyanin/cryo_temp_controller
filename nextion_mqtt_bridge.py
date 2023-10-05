@@ -68,6 +68,7 @@ class NextionMqttBridge(Thread):
                 self.__port_is_open = serial_port_obj.isOpen()
                 self.__serial_port_obj = serial_port_obj
                 logger.debug(f"Connection is succesfull! {self.__port_is_open}")
+                self.send_welcome_msg()
             except serial.serialutil.SerialException as exc:
                 logger.debug(f"Connection failed {self.__port_is_open}, {exc}")
                 self.__port_is_open = False
@@ -161,7 +162,14 @@ class NextionMqttBridge(Thread):
     def calculate_ldo_power(self, voltage: float, current: float, topic_name: str):
         self.ldo_power_value = voltage * current
         self.set_mqtt_topic_value(topic_name, round(self.ldo_power_value, 3))
-    
+
+    def send_welcome_msg(self):
+        next_page_cmd = "page mesurments"
+        for cmd in general_functions.welcome_cmds:
+            self.serial_write(cmd)
+        time.sleep(2)
+        self.serial_write(next_page_cmd)
+
 
     def on_message(self, client, userdata, msg):
         """

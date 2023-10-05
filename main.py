@@ -99,7 +99,7 @@ def main():
 
     t1_kp = 4
     t1_ki = 0.3
-    t1_kd = 0.0
+    t1_kd = 500
     t1_k = 1
     t1_b = 1
     t1_limits = 1
@@ -172,7 +172,7 @@ def main():
     heater_voltage_pid.mqtt_start()
     heater_voltage_pid.run_flag = True
     heater_voltage_pid.name = "Heater"
-    heater_voltage_pid.set_ramprate_func_available(False)
+    heater_voltage_pid.set_ramprate_func_available(True)
     heater_voltage_pid.set_ramprate_func_en(False)
     heater_voltage_pid.start()
 
@@ -183,7 +183,7 @@ def main():
     ch1_temp_pid.set_ramprate_func_en(False)
     ch1_temp_pid.enable_calculate_pid_limits(False)
     ch1_temp_pid.set_pid_limits(0, 43)
-    ch1_temp_pid.set_control_loop_period(1.0)
+    ch1_temp_pid.set_control_loop_period(0.5)
     ch1_temp_pid.start()
     
 
