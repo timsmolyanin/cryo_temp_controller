@@ -6,7 +6,9 @@ import paho.mqtt.client as mqtt
 import random
 import time
 import queue
+from loguru import logger
 
+logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
 q = queue.Queue()
 
@@ -28,18 +30,20 @@ mqtt_topics_list = [("/devices/HeaterModule/controls/MEAS LDO REG Vout", 0),
                            ("/devices/MeasureModuleSetpoints/controls/CH2 State", 0),
                            ("/devices/MeasureModule/controls/CH1 Current", 0),
                            ("/devices/MeasureModule/controls/CH2 Current", 0),
+                           ("/devices/HeaterModule/controls/Output Voltage State", 0)
                            ]
 
 
-def connect_mqtt() -> mqtt:
+def connect_mqtt(whois: str) -> mqtt:
+    logger.debug(f"MQTT client in {whois} started connect to broker")
     client_id = f"dialtek-mqtt-{random.randint(0, 100)}"
     broker = "192.168.44.11"
     port = 1883
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
-            print("Connected to MQTT Broker!")
+            logger.debug(f"{whois} Connected to MQTT Broker!")
         else:
-            print("Failed to connect, return code %d\n", rc)
+            logger.debug(f"{whois} Failed to connect, return code {rc}")
 
     mqtt_client = mqtt.Client(client_id)
     mqtt_client.on_connect = on_connect
@@ -64,12 +68,13 @@ def on_message(client, userdata, msg):
 
 
 def mqtt_start():
-    client = connect_mqtt()
+    client = connect_mqtt(whois="Main function")
     subscribe(client)
     client.loop_start()
 
 
 def main():
+    logger.debug("Aplication is ran")
     mqtt_start()
     cc1_kp = 18.0
     cc1_ki = 4.6
@@ -85,12 +90,12 @@ def main():
     ch2_b = 24.6469
     ch2_limits = 3.5
 
-    hv_kp = 45.0
-    hv_ki = 18.6
-    hv_kd = 8.0
-    hv_k = 585.8231
-    hv_b = 471.0017
-    hv_limits = 5.5
+    hv_kp = 100.0
+    hv_ki = 14.6
+    hv_kd = 6.0
+    hv_k = 593.7
+    hv_b = 522.13
+    hv_limits = 20.5
 
     broker = "192.168.44.11"
     port = 1883
@@ -152,7 +157,7 @@ def main():
     heater_voltage_pid.mqtt_start()
     heater_voltage_pid.run_flag = True
     heater_voltage_pid.name = "Heater"
-    heater_voltage_pid.set_ramprate_func_available(True)
+    heater_voltage_pid.set_ramprate_func_available(False)
     heater_voltage_pid.set_ramprate_func_en(False)
     # heater_voltage_pid.set_mqtt_topics_list(mqtt_topics_list)
     heater_voltage_pid.start()
@@ -171,3 +176,5 @@ def main():
         
 if __name__ == "__main__":
     main()
+
+

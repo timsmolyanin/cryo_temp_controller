@@ -30,14 +30,12 @@ ch1_current_on_cmds = ["mesurments.t6.picc=14", "mesurments.t6.pco=13765", "mesu
 
 ch2_current_off_cmds = ["mesurments.t8.picc=15", "mesurments.t8.pco=50744", "mesurments.t2.picc=13",
                         "mesurments.t2.pco=50744", "mesurments.t9.picc=14", "mesurments.t9.pco=50744",
-                        "mesurments.t3.picc=12", "mesurments.t3.pco=50744", "mesurments.t11.pco=50744",
-                        "mesurments.t5.pco=50744"]
+                        "mesurments.t11.pco=50744", "mesurments.t5.pco=50744"]
 
 
 ch2_current_on_cmds = ["mesurments.t8.picc=14", "mesurments.t8.pco=13765", "mesurments.t2.picc=12",
                        "mesurments.t2.pco=31", "mesurments.t9.picc=14", "mesurments.t9.pco=34222",
-                        "mesurments.t3.picc=12", "mesurments.t3.pco=29631", "mesurments.t11.pco=34222",
-                        "mesurments.t5.pco=29631"]
+                        "mesurments.t11.pco=34222", "mesurments.t5.pco=29631"]
 
 
 def calculate_moving_average(var_list, buffer_size: int, mqtt_host: str, topic: str):

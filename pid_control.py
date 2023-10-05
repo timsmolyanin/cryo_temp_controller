@@ -7,6 +7,9 @@ import paho.mqtt.publish as publish
 import random
 import time
 import statistics
+from loguru import logger
+
+logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
 mqtt_topics_list = [("/devices/HeaterModule/controls/MEAS LDO REG Vout", 0),
                            ("/devices/HeaterModuleSetpoints/controls/LDO Voltage RampRate", 0),
@@ -25,6 +28,7 @@ mqtt_topics_list = [("/devices/HeaterModule/controls/MEAS LDO REG Vout", 0),
                            ("/devices/MeasureModuleSetpoints/controls/CH2 State", 0),
                            ("/devices/MeasureModule/controls/CH1 Current", 0),
                            ("/devices/MeasureModule/controls/CH2 Current", 0),
+                           ("/devices/HeaterModule/controls/Output Voltage State", 0)
                            ]
 
 
@@ -47,7 +51,7 @@ class PIDControl(Thread):
         self.feedback_value = 0.0
         self.setpoint_value = 0.0
 
-        self.__buffer_size = 30
+        self.__buffer_size = 20
         self.__kp = kp
         self.__ki = ki
         self.__kd = kd
@@ -66,6 +70,7 @@ class PIDControl(Thread):
 
         self.mov_av_list = list()
         self.median_list = list()
+        self.median_before_pid_list = list()
 
         self.name = ""
 
@@ -75,6 +80,7 @@ class PIDControl(Thread):
         value, and updates the control output accordingly, while also performing different calculations
         based on a filter selector.
         """
+        logger.debug(f"Regulator {self.name} is started")
         while self.run_flag:
             # print(self.name, self.ramprate_func_is_available, self.ramprate_func_en)
             time.sleep(self.__control_loop_period)
@@ -84,15 +90,17 @@ class PIDControl(Thread):
                     self.set_voltage_with_ramprate(self.__ramprate_value, self.setpoint_value)
             
             self.__pid.auto_mode = self.__pid_auto_mode_value
+            # print(self.name, self.__pid_auto_mode_value)
             if self.__pid_auto_mode_value:
                 calculated_counts = self.calculate_control_counts(self.__k, self.__b, self.setpoint_value)
                 min = calculated_counts - self.calculate_value_of_percent(calculated_counts, self.__pid_limits_in_percent)
                 max = calculated_counts + self.calculate_value_of_percent(calculated_counts, self.__pid_limits_in_percent)
                 self.__pid.setpoint = self.setpoint_value
                 self.__pid.output_limits = (min, max)
-                control = self.__pid(self.feedback_value)
-                # print(self.pid.setpoint, control, self.feedback_value, )
-                self.update(int(control))
+                median_feedback_value = self.filter_data_before_pid(self.feedback_value)
+                if isinstance(median_feedback_value, float):
+                    control = self.__pid(median_feedback_value)
+                    self.update(int(control))
                 match self.__data_filter_type:
                     case 0:
                         # send raw values
@@ -103,6 +111,15 @@ class PIDControl(Thread):
                     case 2:
                         # calculate moving average value and send it to mqtt topic
                         self.calculate_moving_average(self.__buffer_size, self.feedback_value)
+
+    def filter_data_before_pid(self, value):
+        median = 0
+        buffer_size_value = 5
+        self.median_before_pid_list.append(value)
+        if len(self.median_before_pid_list) == buffer_size_value:
+            median = statistics.median(self.median_before_pid_list)
+            self.median_before_pid_list = list()
+            return median
 
     
     def calculate_control_counts(self, k: float, b: float, x: float) -> int:
@@ -294,16 +311,19 @@ class PIDControl(Thread):
             raise TypeError(f"Type for filter_type must be integer, not {type(filter_type)}!")
 
 
-    def connect_mqtt(self) -> mqtt:
+    def connect_mqtt(self, whois: str) -> mqtt:
         """
         The function `connect_mqtt` connects to an MQTT broker and returns the MQTT client.
         :return: an instance of the MQTT client.
         """
+        logger.debug(f"MQTT client in {whois} started connect to broker")
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
-                print("Connected to MQTT Broker!")
+                logger.debug(f"{whois} Connected to MQTT Broker!")
+                # print("Connected to MQTT Broker!")
             else:
-                print("Failed to connect, return code %d\n", rc)
+                logger.debug(f"{whois} Failed to connect, return code {rc}")
+                # print("Failed to connect, return code %d\n", rc)
 
         mqtt_client = mqtt.Client(self.client_id)
         mqtt_client.on_connect = on_connect
@@ -343,7 +363,6 @@ class PIDControl(Thread):
         """
         topic_name = msg.topic.split("/")
         topic_val = msg.payload.decode("utf-8")
-        param_list = topic_name[-1].split()
         if self.name == "Heater":
             match topic_name[2]:
                 case "HeaterModule":
@@ -351,12 +370,18 @@ class PIDControl(Thread):
                         case "MEAS LDO REG Vout":
                             self.mqtt_set_feedback(topic_val)
                         case "Output Voltage State":
-                            self.set_control_value_state(bool(int(topic_val)))
-                            self.set_mqtt_topic_value("/devices/FilteredValues/controls/LDO Voltage/on", "0.0")
+                            if self.__ramprate_func_is_available:
+                                self.set_control_value_state(bool(int(topic_val)))
+                            else:
+                                self.set_control_value_state(bool(int(topic_val)))
+                                self.set_pid_automode_value(bool(int(topic_val)))
+                            if not bool(int(topic_val)):
+                                    self.set_mqtt_topic_value("/devices/FilteredValues/controls/LDO Voltage/on", "0.0")
                 case "HeaterModuleSetpoints":
                     match topic_name[-1]:
                         case "LDO Voltage Setpoint":
                             self.mqtt_set_setpoint(topic_val)
+                            self.set_pwm_value(self.setpoint_value)
                             if self.__control_value_state:
                                 if self.__ramprate_func_is_available:
                                     self.set_pid_automode_value(False)
@@ -388,7 +413,8 @@ class PIDControl(Thread):
                         case "CH1 State":
                             self.set_control_value_state(bool(int(topic_val)))
                             self.set_pid_automode_value(bool(int(topic_val)))
-                            self.set_mqtt_topic_value("/devices/FilteredValues/controls/CH1 Current/on", "0.0")
+                            if not bool(int(topic_val)):
+                                self.set_mqtt_topic_value("/devices/FilteredValues/controls/CH1 Current/on", "0.0")
                 case "MeasureModule":
                     match topic_name[-1]:
                         case "CH1 Current":
@@ -413,7 +439,7 @@ class PIDControl(Thread):
         The function `mqtt_start` starts the MQTT client, connects to the MQTT broker, subscribes to
         topics, and starts the client's loop.
         """
-        client = self.connect_mqtt()
+        client = self.connect_mqtt(self.name)
         self.subscribe(client)
         client.loop_start()
 
@@ -482,7 +508,6 @@ class PIDControl(Thread):
         :type value: float
         """
         median = 0
-        tmp = 0
         buffer_size_value = buffer_size
         self.median_list.append(value)
         if len(self.median_list) == buffer_size_value:
@@ -494,27 +519,29 @@ class PIDControl(Thread):
     def set_voltage_with_ramprate(self, ramprate: float, setpoint: float):
         k = 585.8231
         b = 471.0017
-        self.set_pwm_value(self.setpoint_value)
+        # self.set_pwm_value(self.setpoint_value)
         steps_count = 0
         setpoint_counts = self.calculate_control_counts(k, b, self.setpoint_value)
         actual_voltage_counts = self.calculate_control_counts(k, b, self.feedback_value)
-        if self.feedback_value > self.setpoint_value:
-            steps_count = int((self.feedback_value - self.setpoint_value) / self.__ramprate_value)
-        elif self.feedback_value < self.setpoint_value:
-            steps_count = int((self.setpoint_value - self.feedback_value) / self.__ramprate_value)
-        while steps_count:
-            if self.__control_value_state:
-                if self.feedback_value > self.setpoint_value:
-                    actual_voltage_counts -= setpoint_counts / self.setpoint_value * self.__ramprate_value
-                elif self.feedback_value < self.setpoint_value:
-                    actual_voltage_counts += setpoint_counts / self.setpoint_value * self.__ramprate_value
-                self.set_mqtt_topic_value(self.mqtt_control_topic, actual_voltage_counts)
-                self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
-                print(f"Set voltage counts: {actual_voltage_counts}, steps {steps_count}")
-                steps_count -= 1
-                time.sleep(1)
-            else:
-                break
+        if self.setpoint_value > 1:
+            print(f"Setpoint: {self.setpoint_value}")
+            if self.feedback_value > self.setpoint_value:
+                steps_count = int((self.feedback_value - self.setpoint_value) / self.__ramprate_value)
+            elif self.feedback_value < self.setpoint_value:
+                steps_count = int((self.setpoint_value - self.feedback_value) / self.__ramprate_value)
+            while steps_count:
+                if self.__control_value_state:
+                    if self.feedback_value > self.setpoint_value:
+                        actual_voltage_counts -= setpoint_counts / self.setpoint_value * self.__ramprate_value
+                    elif self.feedback_value < self.setpoint_value:
+                        actual_voltage_counts += setpoint_counts / self.setpoint_value * self.__ramprate_value
+                    self.set_mqtt_topic_value(self.mqtt_control_topic, actual_voltage_counts)
+                    self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
+                    print(f"Set voltage counts: {actual_voltage_counts}, steps {steps_count}")
+                    steps_count -= 1
+                    time.sleep(1)
+                else:
+                    break
         if self.__control_value_state:
             self.__pid_auto_mode_value = True
             self.__ramprate_func_en = False
@@ -534,7 +561,7 @@ class PIDControl(Thread):
             pwm_value = int(k * ldo_voltage_setpoint) + 2
         elif ldo_voltage_setpoint >= 38:
             pwm_value = 100
-            
+
         if pwm_value > 100:
             pwm_value = 100
         self.set_mqtt_topic_value(pwm_value_topic, pwm_value)
