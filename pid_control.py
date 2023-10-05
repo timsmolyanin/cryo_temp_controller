@@ -333,6 +333,7 @@ class PIDControl(Thread):
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
                 logger.debug(f"{whois} Connected to MQTT Broker!")
+                return
             else:
                 logger.debug(f"{whois} Failed to connect, return code {rc}")
 
@@ -544,25 +545,30 @@ class PIDControl(Thread):
         steps_count = 0
         setpoint_counts = self.calculate_control_counts(k, b, self.setpoint_value)
         actual_voltage_counts = self.calculate_control_counts(k, b, self.feedback_value)
-        if self.setpoint_value > 1:
-            print(f"Setpoint: {self.setpoint_value}")
-            if self.feedback_value > self.setpoint_value:
-                steps_count = int((self.feedback_value - self.setpoint_value) / self.__ramprate_value)
-            elif self.feedback_value < self.setpoint_value:
-                steps_count = int((self.setpoint_value - self.feedback_value) / self.__ramprate_value)
-            while steps_count:
-                if self.__control_value_state:
-                    if self.feedback_value > self.setpoint_value:
+        print(f"Setpoint: {self.setpoint_value}")
+        if self.feedback_value > self.setpoint_value:
+            steps_count = int((self.feedback_value - self.setpoint_value) / self.__ramprate_value)
+        elif self.feedback_value < self.setpoint_value:
+            steps_count = int((self.setpoint_value - self.feedback_value) / self.__ramprate_value)
+        while steps_count:
+            if self.__control_value_state:
+                if self.feedback_value > self.setpoint_value:
+                    if self.setpoint_value < 1:
+                        actual_voltage_counts = 0.0
+                    else:
                         actual_voltage_counts -= setpoint_counts / self.setpoint_value * self.__ramprate_value
-                    elif self.feedback_value < self.setpoint_value:
+                elif self.feedback_value < self.setpoint_value:
+                    if self.setpoint_value < 1:
+                        actual_voltage_counts = 0.0
+                    else:
                         actual_voltage_counts += setpoint_counts / self.setpoint_value * self.__ramprate_value
-                    self.set_mqtt_topic_value(self.mqtt_control_topic, actual_voltage_counts)
-                    self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
-                    print(f"Set voltage counts: {actual_voltage_counts}, steps {steps_count}")
-                    steps_count -= 1
-                    time.sleep(1)
-                else:
-                    break
+                self.set_mqtt_topic_value(self.mqtt_control_topic, actual_voltage_counts)
+                self.set_mqtt_topic_value(self.mqtt_output_topic, self.feedback_value)
+                print(f"Set voltage counts: {actual_voltage_counts}, steps {steps_count}")
+                steps_count -= 1
+                time.sleep(1)
+            else:
+                break
         if self.__control_value_state:
             self.__pid_auto_mode_value = True
             self.__ramprate_func_en = False

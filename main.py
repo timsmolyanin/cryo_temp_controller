@@ -42,6 +42,7 @@ def connect_mqtt(whois: str) -> mqtt:
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
             logger.debug(f"{whois} Connected to MQTT Broker!")
+            return
         else:
             logger.debug(f"{whois} Failed to connect, return code {rc}")
 
@@ -106,7 +107,8 @@ def main():
 
     broker = "192.168.44.11"
     port = 1883
-    comport = "COM5"
+    comport = "COM5"    # win style
+    # comport = "/dev/ttyS4"  # unix style
     baudrate = 115200
 
     ch1_current_mqtt_feedback_topic = "/devices/MeasureModule/controls/CH1 Current"

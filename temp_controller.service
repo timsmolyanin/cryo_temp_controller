@@ -6,7 +6,7 @@ After=multi-user.target
 User=root
 Type=simple
 Restart=always
-ExecStart=/root/wk/py310/bin/python /root/wk/dialtek/cryo_temp_controller/main.py
+ExecStart=/root/wk/py310/bin/python /root/wk/cryo_temp_controller/main.py
 
 [Install]
 WantedBy=multi-user.target
