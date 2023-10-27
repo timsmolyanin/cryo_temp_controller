@@ -8,6 +8,7 @@ import struct
 
 import general_functions
 import list_of_mqtt_topics
+from topic_executor import TopicExecutor
 
 from loguru import logger
 
@@ -176,81 +177,11 @@ class NextionMqttBridge(Thread):
         """
         topic_name = msg.topic.split("/")
         topic_val = msg.payload.decode("utf-8")
+        topic_executor = TopicExecutor(self, topic_name[2], topic_name[-1], topic_val)
+        
+        print(topic_name, topic_val)
         try:
-            match topic_name[2]:
-                case "HeaterModule":
-                    match topic_name[-1]:
-                        case "MEAS Load Current":
-                            load_current = round(float(topic_val), 3)
-                            self.ldo_current_value = load_current
-                            cmd = 'mesurments.t14.txt="' + str(load_current) + '"'
-                            self.serial_write(cmd)
-                            self.calculate_ldo_power(self.ldo_voltage_value, self.ldo_current_value, self.ldo_power_topic)
-                        case "Output Voltage State":
-                            if topic_val == "1":
-                                for cmd in general_functions.heater_on_cmds:
-                                    self.serial_write(cmd)
-                            elif topic_val == "0":
-                                for cmd in general_functions.heater_off_cmds:
-                                    self.serial_write(cmd)
-                case "MeasureModule":
-                    match topic_name[-1]:
-                        case "CH1 Resistance":
-                            raw_temp = general_functions.convert_resistanc_to_temp(float(topic_val))
-                            self.ch1_temp_list.append(raw_temp[1])
-                            if len(self.ch1_temp_list) == self.aver_buff_size:
-                                general_functions.calculate_moving_average(self.ch1_temp_list, self.aver_buff_size, self.broker, self.ch1_fitered_temp_topic)
-                                self.ch1_temp_list = list()
-                        case "CH2 Resistance":
-                            raw_temp = general_functions.convert_resistanc_to_temp(float(topic_val))
-                            self.ch2_temp_list.append(raw_temp[1])
-                            if len(self.ch2_temp_list) == self.aver_buff_size:
-                                general_functions.calculate_moving_average(self.ch2_temp_list, self.aver_buff_size, self.broker, self.ch2_fitered_temp_topic)
-                                self.ch2_temp_list = list()
-                case "FilteredValues":    
-                    match topic_name[-1]:
-                        case "CH1 Current":
-                            current = round(float(topic_val), 3)
-                            cmd = 'mesurments.t6.txt="' + str(current) + '"'
-                            self.serial_write(cmd)
-                        case "CH2 Current":
-                            current = round(float(topic_val), 3)
-                            cmd = 'mesurments.t8.txt="' + str(current) + '"'
-                            self.serial_write(cmd)
-                        case "LDO Voltage":
-                            load_voltage = round(float(topic_val), 3)
-                            self.ldo_voltage_value = load_voltage
-                            cmd = 'mesurments.t12.txt="' + str(load_voltage) + '"'
-                            self.serial_write(cmd)
-                            self.calculate_ldo_power(self.ldo_voltage_value, self.ldo_current_value, self.ldo_power_topic)
-                        case "CH1 Temperature":
-                            ch1_temp = round(float(topic_val), 2)
-                            cmd = 'mesurments.t0.txt="' + str(ch1_temp) + '"'
-                            self.serial_write(cmd)
-                        case "CH2 Temperature":
-                            ch2_temp = round(float(topic_val), 2)
-                            cmd = 'mesurments.t2.txt="' + str(ch2_temp) + '"'
-                            self.serial_write(cmd)
-                        case "LDO Power":
-                            power = round(float(topic_val), 2)
-                            cmd = 'mesurments.t16.txt="' + str(power) + '"'
-                            self.serial_write(cmd)
-                case "MeasureModuleSetpoints":
-                    match topic_name[-1]:
-                        case "CH1 State":
-                            if topic_val == "1":
-                                for cmd in general_functions.ch1_current_on_cmds:
-                                    self.serial_write(cmd)
-                            elif topic_val == "0":
-                                for cmd in general_functions.ch1_current_off_cmds:
-                                    self.serial_write(cmd)
-                        case "CH2 State":
-                            if topic_val == "1":
-                                for cmd in general_functions.ch2_current_on_cmds:
-                                    self.serial_write(cmd)
-                            elif topic_val == "0":
-                                for cmd in general_functions.ch2_current_off_cmds:
-                                    self.serial_write(cmd)
+            topic_executor.execute()
         except Exception as e:
             print(e)
 
@@ -281,9 +212,11 @@ class NextionMqttBridge(Thread):
     
 
 def test():
-    comport = "COM5"
+    # comport = "COM5"
+    comport = "COM9"
     baudrate = 115200
-    broker = "192.168.44.11"
+    # broker = "192.168.44.11"
+    broker = "127.0.0.1"
     port = 1883
     nextion_mqtt_bridge = NextionMqttBridge(mqtt_port=port, mqtt_broker=broker, mqtt_passw=None, mqtt_user=None,
                                             comport_baudrate=baudrate, comport_name=comport)
