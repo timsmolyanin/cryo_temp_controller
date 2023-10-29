@@ -1,0 +1,72 @@
+{
+    "HeaterModule": {
+        
+        "MEAS Load Current": {
+            "Condition": "False",
+            "Cmd": "mesurments.t14.txt="
+        },
+        "Output Voltage State": {
+            "Condition": "True",
+            "1": ["mesurments.q0.picc=18", "mesurments.b3.picc=18", "mesurments.t12.picc=16",
+            "mesurments.t13.picc=16", "mesurments.t14.picc=16", "mesurments.t15.picc=16",
+            "mesurments.t16.picc=16", "mesurments.t12.pco=0", "mesurments.t13.pco=0",
+            "mesurments.t14.pco=0", "mesurments.t15.pco=0", "mesurments.t16.pco=0",
+            "mesurments.t17.pco=0", "mesurments.t18.pco=0", "mesurments.t19.pco=0",
+            "mesurments.b3.picc2=19"],
+            "0": ["mesurments.q0.picc=20", "mesurments.b3.picc=20", "mesurments.t12.picc=20",
+            "mesurments.t13.picc=16", "mesurments.t14.picc=17", "mesurments.t15.picc=16",
+            "mesurments.t16.picc=17", "mesurments.t12.pco=50744", "mesurments.t13.pco=50744",
+            "mesurments.t14.pco=50744", "mesurments.t15.pco=50744", "mesurments.t16.pco=50744",
+            "mesurments.t17.pco=50744", "mesurments.t18.pco=50744", "mesurments.t19.pco=50744",
+            "mesurments.b3.picc2=21"]
+        }
+	},
+    "FilteredValues": {
+        "CH1 Current": {
+            "Condition": "False",
+            "Cmd": "mesurments.t6.txt="
+        },
+        "CH2 Current": {
+            "Condition": "False",
+            "Cmd": "mesurments.t8.txt="
+        },
+        "LDO Voltage": {
+            "Condition": "False",
+            "Cmd": "mesurments.t12.txt="
+        },
+        "CH1 Temperature": {
+            "Condition": "False",
+            "Cmd": "mesurments.t0.txt="
+        },
+        "CH2 Temperature": {
+            "Condition": "False",
+            "Cmd": "mesurments.t2.txt="
+        },
+        "LDO_Power": {
+            "Condition": "False",
+            "Cmd": "mesurments.t16.txt="
+        }
+	},
+    "MeasureModuleSetpoints": {
+        "CH1 State": {
+            "Condition": "True",
+            "1": ["mesurments.t6.picc=14", "mesurments.t6.pco=13765", "mesurments.t0.picc=12", 
+            "mesurments.t0.pco=31", "mesurments.t7.picc=14", "mesurments.t7.pco=13765",
+            "mesurments.t10.pco=13765", "mesurments.t4.pco=31", "mesurments.t1.pco=31",
+             "mesurments.t1.picc=12"],
+            "0": ["mesurments.t6.picc=15", "mesurments.t6.pco=50744", "mesurments.t0.picc=13",
+            "mesurments.t0.pco=50744", "mesurments.t7.picc=14", "mesurments.t7.pco=50744",
+            "mesurments.t10.pco=50744", "mesurments.t4.pco=50744", "mesurments.t1.pco=50744",
+            "mesurments.t1.picc=12"]
+        },
+        "CH2 State": {
+            "Condition": "True",
+            "1": ["mesurments.t8.picc=14", "mesurments.t8.pco=13765", "mesurments.t2.picc=12",
+            "mesurments.t2.pco=31", "mesurments.t9.picc=14", "mesurments.t9.pco=13765",
+             "mesurments.t11.pco=13765", "mesurments.t5.pco=31"],
+            "0": ["mesurments.t8.picc=15", "mesurments.t8.pco=50744", "mesurments.t2.picc=13",
+            "mesurments.t2.pco=50744", "mesurments.t9.picc=14", "mesurments.t9.pco=50744",
+            "mesurments.t11.pco=50744", "mesurments.t5.pco=50744"]
+        }
+	}
+}

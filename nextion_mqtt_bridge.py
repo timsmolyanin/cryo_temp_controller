@@ -5,6 +5,7 @@ import random
 import time
 import serial
 import struct
+import json
 
 import general_functions
 import list_of_mqtt_topics
@@ -176,10 +177,15 @@ class NextionMqttBridge(Thread):
         """
         """
         topic_name = msg.topic.split("/")
-        topic_val = msg.payload.decode("utf-8")
-        topic_executor = TopicExecutor(self, topic_name[2], topic_name[-1], topic_val)
+        topic_value = msg.payload.decode("utf-8")
         
-        print(topic_name, topic_val)
+        config_file_path = "topic_config.json"
+        config_file = open(config_file_path)
+        config = json.loads(config_file.read())
+        
+        topic_executor = TopicExecutor(self, topic_name[2], topic_name[-1], topic_value, config)
+        
+        print(topic_name, topic_value)
         try:
             topic_executor.execute()
         except Exception as e:
