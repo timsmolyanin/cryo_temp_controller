@@ -1,4 +1,4 @@
-     Voltage/V   Temperature/K   dV/dT(mV/K)
+N    Voltage/V   Temperature/K   dV/dT(mV/K)
 1     0.4852          352.0          2.2
 2     0.5003          345.0          2.6
 3     0.5131          340.1          2.6
