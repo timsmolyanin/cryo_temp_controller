@@ -1,9 +1,17 @@
 from abc import ABC, abstractmethod
+from enum import Enum
+
+def error_print(msg):
+    print(msg)
 
 class Sensor(ABC):
-    def __init__(self, path : str):
+    def __init__(self, path=None, id=0):
         self.config = list()
-        self.load_config(path)
+        self.event_error = error_print
+        self.id = id
+        self.type = SensorType.NONE
+        if path != None:
+            self.load_config(path)
 
     @abstractmethod
     def load_config(self, path : str):
@@ -23,5 +31,12 @@ class Sensor(ABC):
     
     def convert_C_to_K(self, temperature : float) -> float:
         return temperature + 273.15
+
+
+
+class SensorType(Enum):
+    NONE = 0
+    RESISTANCE = 1
+    VOLTAGE = 2
     
 

@@ -1,4 +1,5 @@
 from Sensors import Sensor
+from Sensors import SensorType
 from math import sqrt
 from loguru import logger
 import sys
@@ -6,8 +7,9 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class PtSensor(Sensor):
-    def __init__(self, path):
-        super().__init__(path)
+    def __init__(self, path="", id=45):
+        super().__init__(path, id)
+        self.type = SensorType.RESISTANCE
 
     def load_config(self, path : str):
         """
@@ -18,8 +20,9 @@ class PtSensor(Sensor):
             self.config = {i.split()[0] : float(i.split()[1]) for i in file.read().split('\n')}
             file.close()
             logger.debug("Config Load")
-        except:
-            logger.exception("Config not loading. Exeption: {}")
+        except Exception as e:
+            self.event_error(e)
+            logger.exception(f"Config not loading. Exeption: {e}")
 
 
     def convert(self, resistance : float) -> float:

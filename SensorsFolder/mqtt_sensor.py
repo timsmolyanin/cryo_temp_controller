@@ -1,15 +1,17 @@
 from threading import Thread
-from paho.mqtt import client as mqtt_client
-from paho.mqtt import *
-import random
+from paho.mqtt.client import Client as mqtt_client
+from paho.mqtt.client import MQTTMessage
+from paho.mqtt import publish
 from Sensors import *
+from Filters import *
 from loguru import logger
 import sys
+import random
 logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class MQTTSensor(Thread):
-    def __init__(self, broker, port = 1883, username=None, password=None):
+    def __init__(self, broker, channel_number : int, port = 1883, username=None, password=None, buffer_size=10):
         super().__init__()
 
         self.broker = broker
@@ -17,19 +19,29 @@ class MQTTSensor(Thread):
         self.username = username
         self.password = password
         self.client_id = f'MQTT_sensor-{random.randint(0, 100)}'
+        self.channel_number = channel_number
 
-        self.topic = [
-            ("/devices/MeasureModule/controls/CH1 Voltage", 0),
-            ("/devices/MeasureModule/controls/CH1/Swich/Sensor/Diode", 0), # Topic for changing the sensor to diode
-            ("/devices/MeasureModule/controls/CH1/Swich/Sensor/Pt1000", 0) # topic for changing the sensor to Pt1000
+        self.buffer_size = buffer_size
+
+        self.config_file_path = "SensorsFolder/Sensors/ConfigFolder"
+
+        self.topic_path = "/devices/MeasureModule/controls"
+        self.topics = [
+            (f"{self.topic_path}/CH{self.channel_number}/SensorModel", 0),
+            (f"{self.topic_path}/CH{self.channel_number}/ConfigFname", 0),
+            (f"{self.topic_path}/CH{self.channel_number}/FilterType", 0),
+            (f"{self.topic_path}/CH{self.channel_number}/FilterBufferSize", 0),
+            (f"{self.topic_path}/CH{self.channel_number}/Voltage", 0),
+            (f"{self.topic_path}/CH{self.channel_number}/Resistance", 0)
         ]
 
-        self.sensor = PtSensor("SensorsFolder\Sensors\ConfigFolder\pt1000_config.txt")
+        self.sensor = None
+        self.filterType = None
 
     def run(self):
-        client = self.connect_mqtt("MQTT Sensor")
-        self.subscribe(client)
-        client.loop_forever()
+        self.client = self.connect_mqtt("MQTT Sensor")
+        self.subscribe()
+        self.client.loop_forever()
 
     def connect_mqtt(self, whois : str) -> mqtt_client: 
 
@@ -40,40 +52,139 @@ class MQTTSensor(Thread):
             else:
                 logger.debug(f"{whois} Failed to connect, return code {rc}")
                  
-        client = mqtt_client.Client(self.client_id)
+        client = mqtt_client(self.client_id)
         # client.username_pw_set(username, password)
         client.on_connect = on_connect
         client.connect(self.broker, self.port)
         return client
 
-    def on_message(self, client : mqtt_client, userdata, msg):
+    def on_message(self, client : mqtt_client, userdata, msg : MQTTMessage):
         print(f"Message received [{msg.topic}]: {msg.payload.decode()}")
-        topic = msg.topic.split("/")
-        playload = float(msg.payload.decode())
-        match topic[4]:
-            case "CH1 Voltage":
-                client.publish("/devices/FilteredValues/controls/CH1 Temperature", self.sensor.convert(playload))
-            case "CH1":
-                match topic[-1]:
-                    case "Diode":
-                        self.sensor = DiodeSensor("SensorsFolder\Sensors\ConfigFolder\diodChine.txt")
-                    case "Pt1000":
-                        self.sensor = PtSensor("SensorsFolder\Sensors\ConfigFolder\pt1000_config.txt")
-
-
-    def subscribe(self, client: mqtt_client):
+        topic = msg.topic.split("/")[1:]
+        playload = msg.payload.decode()
         try:
-            client.subscribe(self.topic) 
-            client.on_message = self.on_message
+            f_playload = float(playload)
         except Exception as e:
-            print(e)
+            logger.error(e)
+            self.publish_error(str(e))
+        
+        if self.topic_path == f"/{topic[0]}/{topic[1]}/{topic[2]}":
+            if topic[3] == f"CH{self.channel_number}":
+                match topic[4]:
+                    case "SensorModel":
+                        print("Switch Sensor")
+                        match playload:
+                            case "Diode":
+                                self.sensor = DiodeSensor(id=100)
+                            case "Pt":
+                                self.sensor = PtSensor(id=45)
+                        if self.sensor != None:
+                            client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/SetCurrent", payload=self.sensor.id)
+                            self.sensor.event_error = self.publish_error
+                            if self.filterType != None:
+                                self.filterType.clear()
+                            else:
+                                logger.error("FilterType = None")
+                                self.publish_error("FilterType = None")
+                        else:
+                            logger.error("Sensor = None")
+                            self.publish_error("Sensor = None")
+
+                    case "ConfigFname":
+                        print("Config")
+                        try:
+                            self.sensor.load_config(f"{self.config_file_path}/{playload}")
+                        except Exception as e:
+                            logger.error(e)
+                            self.publish_error(str(e))
+
+                    case "FilterType":
+                        print("Switch Filter", end=" ")
+                        match playload:
+                            case "Median":
+                                self.filterType = Median(self.buffer_size)
+                                print("Median", end=" ")
+                            case "FloatWindow":
+                                self.filterType = FloatWindow(self.buffer_size)
+                                print("FloatWindow", end=" ")
+                        print()
+
+                    case "FilterBufferSize":
+                        print("Change Buffer", playload)
+                        if self.filterType != None:
+                            self.filterType.change_buffer(int(f_playload))
+                        else:
+                            logger.error("FilterType = None")
+                            self.publish_error("FilterType = None")
+
+                    case "Voltage":
+                        print("Voltage", playload)
+                        if self.sensor != None:
+                            if self.sensor.type == SensorType.VOLTAGE:
+                                self.convert(f_playload)
+                        else:
+                            logger.error("Sensor = None")
+                            self.publish_error("Sensor = None")
+
+                    case "Resistance":
+                        print("Resistance", playload)
+                        if self.sensor != None:
+                            if self.sensor.type == SensorType.RESISTANCE:
+                                self.convert(f_playload)
+                        else:
+                            logger.error("Sensor = None")
+                            self.publish_error("Sensor = None")
+
+
+
+    def subscribe(self):
+        try:
+            self.client.subscribe(self.topics) 
+            self.client.on_message = self.on_message
+        except Exception as e:
+            logger.error(e)
+            self.publish_error(str(e))
+    
+    def convert(self, playload : float):
+        try:
+            self.filterType.add_value(float(playload))
+            self.client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/Temperature", payload=self.sensor.convert(self.filterType.filtering()))
+        except Exception as e:
+            logger.error(e)
+            self.publish_error(str(e))
+            
+
+    def publish_error(self, massage):
+        self.client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/State", payload=str(massage))
 
 def test():
     broker = "127.0.0.1"
     port = 1883
 
-    mqtt_sensor = MQTTSensor(broker=broker, port=port)
+    topics = [
+            (f"/devices/MeasureModule/controls/CH1/SensorModel", 0),
+            (f"/devices/MeasureModule/controls/CH1/ConfigFname", 0),
+            (f"/devices/MeasureModule/controls/CH1/FilterType", 0),
+            (f"/devices/MeasureModule/controls/CH1/FilterBufferSize", 0),
+            (f"/devices/MeasureModule/controls/CH1/Voltage", 0),
+            (f"/devices/MeasureModule/controls/CH1/Resistance", 0),
+            (f"/devices/MeasureModule/controls/CH1/Temperature", 0),
+            (f"/devices/MeasureModule/controls/CH1/SetCurrent", 0),
+            (f"/devices/MeasureModule/controls/CH1/State", 0)
+        ]
+
+    publish.multiple(topics, hostname=broker, port=port)
+
+    mqtt_sensor = MQTTSensor(broker=broker, port=port, channel_number=1)
     mqtt_sensor.start()
+
+    topics = [
+            (f"/devices/MeasureModule/controls/CH1/SensorModel", "Diode"),
+            (f"/devices/MeasureModule/controls/CH1/ConfigFname", "diode_config_2.txt"),
+            (f"/devices/MeasureModule/controls/CH1/FilterType", "Median"),
+            (f"/devices/MeasureModule/controls/CH1/FilterBufferSize", 5)
+        ]
+    publish.multiple(topics, hostname=broker, port=port)
 
 if __name__ == "__main__":
     test()

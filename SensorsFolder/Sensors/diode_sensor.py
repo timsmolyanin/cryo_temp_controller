@@ -1,4 +1,5 @@
 from Sensors import Sensor
+from Sensors import SensorType
 from loguru import logger
 from scipy.optimize import curve_fit
 import numpy as np
@@ -7,8 +8,9 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class DiodeSensor(Sensor):
-    def __init__(self, path, func_type="liner"):
-        super().__init__(path)
+    def __init__(self, path="", id=100, func_type="liner"):
+        super().__init__(path, id)
+        self.type = SensorType.VOLTAGE
         self.func_type = func_type
         if self.func_type == "approx":
             self.approximation()
@@ -22,8 +24,9 @@ class DiodeSensor(Sensor):
             self.config = {float(i.split()[1]) : float(i.split()[2]) for i in file.read().split('\n')[1::]}
             file.close()
             logger.debug("Config Load")
-        except:
-            logger.exception("Config not loading. Exeption: {}")
+        except Exception as e:
+            self.event_error(e)
+            logger.exception(f"Config not loading. Exeption: {e}")
 
 
     def convert(self, voltage : float) -> float:
@@ -37,13 +40,13 @@ class DiodeSensor(Sensor):
 
         if len(self.config) == 0:
             logger.exception("Config is empty")
-            raise Exception("Config is empty")
+            self.event_error("Config is empty")
 
         if voltage < list(self.config.keys())[0]:
-            raise Exception("Voltage less min limit sensor")
+            self.event_error("Voltage less min limit sensor")
         
         if voltage > list(self.config.keys())[-1]:
-            raise Exception("Voltage more max limit sensor")
+            self.event_error("Voltage more max limit sensor")
 
         temperature = -1
         if self.func_type == "liner":
