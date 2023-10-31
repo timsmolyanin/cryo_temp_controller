@@ -20,8 +20,8 @@ class MQTTSensor(Thread):
 
         self.topic = [
             ("/devices/MeasureModule/controls/CH1 Voltage", 0),
-            ("/devices/MeasureModule/controls/CH1/SwichSensor/Diode", 0), # Topic for changing the sensor to diode
-            ("/devices/MeasureModule/controls/CH1/SwichSensor/Pt1000", 0) # topic for changing the sensor to Pt1000
+            ("/devices/MeasureModule/controls/CH1/Swich/Sensor/Diode", 0), # Topic for changing the sensor to diode
+            ("/devices/MeasureModule/controls/CH1/Swich/Sensor/Pt1000", 0) # topic for changing the sensor to Pt1000
         ]
 
         self.sensor = PtSensor("SensorsFolder\Sensors\ConfigFolder\pt1000_config.txt")
