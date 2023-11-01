@@ -25,7 +25,7 @@ class MQTTSensor(Thread):
 
         self.config_file_path = "SensorsFolder/Sensors/ConfigFolder"
 
-        self.topic_path = "/devices/MeasureModule/controls"
+        self.topic_path = "/devices/MeasureModule/controls" # давай без controls. Не думаю, что есть смысл переусложнять структуру
         self.topics = [
             (f"{self.topic_path}/CH{self.channel_number}/SensorModel", 0),
             (f"{self.topic_path}/CH{self.channel_number}/ConfigFname", 0),
@@ -64,12 +64,12 @@ class MQTTSensor(Thread):
         playload = msg.payload.decode()
         f_playload = None
         try:
-            f_playload = float(playload)
+            f_playload = float(playload) # это должно быть не здесь. У тебя несколько топиков (SensorModel, например) возвращают не число. Перенеси приведение типов поближе к месту, где тебе нужен именно флоат (т.е. в convert)
         except Exception as e:
             self.publish_error(str(e))
         
-        if self.topic_path == f"/{topic[0]}/{topic[1]}/{topic[2]}":
-            if topic[3] == f"CH{self.channel_number}":
+        if self.topic_path == f"/{topic[0]}/{topic[1]}/{topic[2]}": # в этой проверке, наверное, нет смысла. Тебе гарантированно придут только те топики, на которые ты подписался
+            if topic[3] == f"CH{self.channel_number}": # аналогично. Структура приходящих топиков у нас в виде f'devices/MeasureModule/CH{self.channel_number}/'
                 match topic[4]:
                     case "SensorModel":
                         print("Switch Sensor")
@@ -80,10 +80,14 @@ class MQTTSensor(Thread):
                                 self.sensor = PtSensor(id=45)
                             case "Pt100":
                                 self.sensor = PtSensor(id=40)
+                            case _: # default option (мы не знаем такого типа датчика)
+                                raise ValueError(f'Could not resolve sensor type {playload}')
                             # case "TVO":
                             #     pass
+                            
+                                
                         if self.sensor != None:
-                            client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/SetCurrent", payload=self.sensor.id)
+                            client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/SetCurrent", payload=self.sensor.id) # current это ток, не айди. Не ошибка, но можно потом запутаться 
                             self.sensor.event_error = self.publish_error
 
                             if self.filterType != None:
@@ -183,7 +187,7 @@ def test():
             (f"/devices/MeasureModule/controls/CH1/State", 0)
         ]
 
-    publish.multiple(topics, hostname=broker, port=port)
+    publish.multiple(topics, hostname=broker, port=port) # совет. Попробуй заполнение тестовыми данными вынести в отдельный скрипт и пускай он раз в пару секунд чёт пишет в брокер (из второго терминала). Возможно, так будет проще дебажить (будут постоянно приходить тестовые данные)
 
     mqtt_sensor = MQTTSensor(broker=broker, port=port, channel_number=1)
     mqtt_sensor.start()
