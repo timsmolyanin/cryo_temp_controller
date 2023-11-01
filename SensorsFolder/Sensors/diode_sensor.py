@@ -8,8 +8,8 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class DiodeSensor(Sensor):
-    def __init__(self, path=None, id=100, func_type="liner"):
-        super().__init__(path, id)
+    def __init__(self, path=None, current=100, func_type="liner"):
+        super().__init__(path, current)
         self.type = SensorType.VOLTAGE
         self.func_type = func_type
         if self.func_type == "approx":

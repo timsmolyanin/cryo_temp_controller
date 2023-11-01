@@ -7,8 +7,8 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class PtSensor(Sensor):
-    def __init__(self, path=None, id=45):
-        super().__init__(path, id)
+    def __init__(self, path=None, current=45):
+        super().__init__(path, current)
         self.type = SensorType.RESISTANCE
 
     def load_config(self, path : str):
@@ -47,7 +47,7 @@ class PtSensor(Sensor):
             temperature = -self.config["R0"] * self.config["A"]
             temperature += sqrt(self.config["R0"]**2 * self.config["A"]**2 - 4 * self.config["R0"] * self.config["B"] * (self.config["R0"] - resistance))
             temperature /= 2 * self.config["R0"] * self.config["B"]
-            return round(temperature, 2)
+            return temperature
         elif "k1" in self.config:
             temperature = -(sqrt((self.config["k1"] * resistance) + self.config["k2"]) - self.config["k3"]) / self.config["k4"]
 

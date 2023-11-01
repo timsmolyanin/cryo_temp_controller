@@ -5,10 +5,10 @@ def error_print(msg):
     print(msg)
 
 class Sensor(ABC):
-    def __init__(self, path=None, id=0):
+    def __init__(self, path=None, current=0):
         self.config = list()
         self.event_error = error_print
-        self.id = id
+        self.current = current
         self.type = SensorType.NONE
         if path != None:
             self.load_config(path)
