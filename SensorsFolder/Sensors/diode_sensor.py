@@ -8,7 +8,7 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class DiodeSensor(Sensor):
-    def __init__(self, path="", id=100, func_type="liner"):
+    def __init__(self, path=None, id=100, func_type="liner"):
         super().__init__(path, id)
         self.type = SensorType.VOLTAGE
         self.func_type = func_type

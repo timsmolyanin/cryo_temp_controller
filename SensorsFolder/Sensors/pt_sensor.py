@@ -7,7 +7,7 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class PtSensor(Sensor):
-    def __init__(self, path="", id=45):
+    def __init__(self, path=None, id=45):
         super().__init__(path, id)
         self.type = SensorType.RESISTANCE
 
@@ -33,13 +33,22 @@ class PtSensor(Sensor):
 
             If voltage > max limit or voltage < min limit, return Exeption(`Uncorrect voltage`). 
         """
+        
+
         return self.convert_C_to_K(self.convert_to_C(resistance))
     
     def convert_to_C(self, resistance : float) -> float:
         if len(self.config) == 0:
             logger.exception("Config is empty")
-            raise Exception("Config is empty")
+            self.event_error("Config is empty")
 
-        temperature = -(sqrt((self.config["k1"] * resistance) + self.config["k2"]) - self.config["k3"]) / self.config["k4"]
+        if "R0" in self.config:
+            temperature = -1
+            temperature = -self.config["R0"] * self.config["A"]
+            temperature += sqrt(self.config["R0"]**2 * self.config["A"]**2 - 4 * self.config["R0"] * self.config["B"] * (self.config["R0"] - resistance))
+            temperature /= 2 * self.config["R0"] * self.config["B"]
+            return round(temperature, 2)
+        elif "k1" in self.config:
+            temperature = -(sqrt((self.config["k1"] * resistance) + self.config["k2"]) - self.config["k3"]) / self.config["k4"]
 
-        return temperature
+            return temperature

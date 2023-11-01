@@ -62,10 +62,10 @@ class MQTTSensor(Thread):
         print(f"Message received [{msg.topic}]: {msg.payload.decode()}")
         topic = msg.topic.split("/")[1:]
         playload = msg.payload.decode()
+        f_playload = None
         try:
             f_playload = float(playload)
         except Exception as e:
-            logger.error(e)
             self.publish_error(str(e))
         
         if self.topic_path == f"/{topic[0]}/{topic[1]}/{topic[2]}":
@@ -76,18 +76,21 @@ class MQTTSensor(Thread):
                         match playload:
                             case "Diode":
                                 self.sensor = DiodeSensor(id=100)
-                            case "Pt":
+                            case "Pt1000":
                                 self.sensor = PtSensor(id=45)
+                            case "Pt100":
+                                self.sensor = PtSensor(id=40)
+                            # case "TVO":
+                            #     pass
                         if self.sensor != None:
                             client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/SetCurrent", payload=self.sensor.id)
                             self.sensor.event_error = self.publish_error
+
                             if self.filterType != None:
                                 self.filterType.clear()
                             else:
-                                logger.error("FilterType = None")
                                 self.publish_error("FilterType = None")
                         else:
-                            logger.error("Sensor = None")
                             self.publish_error("Sensor = None")
 
                     case "ConfigFname":
@@ -95,7 +98,6 @@ class MQTTSensor(Thread):
                         try:
                             self.sensor.load_config(f"{self.config_file_path}/{playload}")
                         except Exception as e:
-                            logger.error(e)
                             self.publish_error(str(e))
 
                     case "FilterType":
@@ -105,35 +107,44 @@ class MQTTSensor(Thread):
                                 self.filterType = Median(self.buffer_size)
                                 print("Median", end=" ")
                             case "FloatWindow":
-                                self.filterType = FloatWindow(self.buffer_size)
+                                self.filterType = MovingAverage(self.buffer_size)
                                 print("FloatWindow", end=" ")
                         print()
 
                     case "FilterBufferSize":
                         print("Change Buffer", playload)
-                        if self.filterType != None:
-                            self.filterType.change_buffer(int(f_playload))
-                        else:
-                            logger.error("FilterType = None")
+                        if f_playload == None:
+                            self.publish_error("Playload is not float")
+                            return
+                        if self.filterType == None:
                             self.publish_error("FilterType = None")
+                            return
+                        
+                        self.filterType.change_buffer(int(f_playload))
 
                     case "Voltage":
                         print("Voltage", playload)
-                        if self.sensor != None:
-                            if self.sensor.type == SensorType.VOLTAGE:
-                                self.convert(f_playload)
-                        else:
-                            logger.error("Sensor = None")
+                        if self.sensor == None:
                             self.publish_error("Sensor = None")
+                            return
+                        if f_playload == None:
+                            self.publish_error("Playload is not float")
+                            return
+                        
+                        if self.sensor.type == SensorType.VOLTAGE:
+                            self.convert(f_playload)
 
                     case "Resistance":
                         print("Resistance", playload)
-                        if self.sensor != None:
-                            if self.sensor.type == SensorType.RESISTANCE:
-                                self.convert(f_playload)
-                        else:
-                            logger.error("Sensor = None")
+                        if self.sensor == None:
                             self.publish_error("Sensor = None")
+                            return
+                        if f_playload == None:
+                            self.publish_error("Playload is not float")
+                            return
+                        
+                        if self.sensor.type == SensorType.RESISTANCE:
+                            self.convert(f_playload)
 
 
 
@@ -142,7 +153,6 @@ class MQTTSensor(Thread):
             self.client.subscribe(self.topics) 
             self.client.on_message = self.on_message
         except Exception as e:
-            logger.error(e)
             self.publish_error(str(e))
     
     def convert(self, playload : float):
@@ -150,12 +160,12 @@ class MQTTSensor(Thread):
             self.filterType.add_value(float(playload))
             self.client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/Temperature", payload=self.sensor.convert(self.filterType.filtering()))
         except Exception as e:
-            logger.error(e)
             self.publish_error(str(e))
             
 
     def publish_error(self, massage):
         self.client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/State", payload=str(massage))
+        logger.error(massage)
 
 def test():
     broker = "127.0.0.1"
@@ -179,8 +189,8 @@ def test():
     mqtt_sensor.start()
 
     topics = [
-            (f"/devices/MeasureModule/controls/CH1/SensorModel", "Diode"),
-            (f"/devices/MeasureModule/controls/CH1/ConfigFname", "diode_config_2.txt"),
+            (f"/devices/MeasureModule/controls/CH1/SensorModel", "Pt1000"),
+            (f"/devices/MeasureModule/controls/CH1/ConfigFname", "pt1000_config.txt"),
             (f"/devices/MeasureModule/controls/CH1/FilterType", "Median"),
             (f"/devices/MeasureModule/controls/CH1/FilterBufferSize", 5)
         ]

@@ -1,3 +1,3 @@
 from .filter_parent import Filter
-from .float_window_filter import FloatWindow
+from .moving_average_filter import MovingAverage
 from .median_filter import Median
