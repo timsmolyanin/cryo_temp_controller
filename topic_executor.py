@@ -1,6 +1,6 @@
 class TopicExecutor:
     
-    def __init__(self,nextion_mqtt_bridge , group_name, module_name, topic_value, config):
+    def __init__(self, nextion_mqtt_bridge, group_name, module_name, topic_value, config):
         self.nextion_mqtt_bridge = nextion_mqtt_bridge
         self.group_name = group_name
         self.module_name = module_name
@@ -17,6 +17,7 @@ class TopicExecutor:
             cmd = module['Cmd'] + self.topic_value
             print(cmd)
             self.nextion_mqtt_bridge.serial_write(cmd)
+            return
             
             
         if module['Condition'] == 'True':
@@ -28,5 +29,6 @@ class TopicExecutor:
             for cmd in cmds:
                 self.nextion_mqtt_bridge.serial_write(cmd)
                 print(cmd)
+            return
         
     
