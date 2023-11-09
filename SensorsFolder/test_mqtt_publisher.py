@@ -25,9 +25,9 @@ class Test_MQTTPublisher(Thread):
 
     def run(self):
         self.client = self.connect_mqtt("MQTT Publisher Test")
-        # self.client.loop_start()
+        self.client.loop_start()
         self.publish()
-        # self.client.loop_stop()
+        self.client.loop_stop()
 
     def connect_mqtt(self, whois : str) -> mqtt_client: 
 
@@ -59,9 +59,26 @@ class Test_MQTTPublisher(Thread):
         for i in self.topics:
             self.client.publish(i[0], i[1], retain=True)
 
+        while True:
+            sleep(1)
+            voltage = 1010 + (random.random() * 20 - 10)
+            resistance = 300 + (random.random() * 100 - 50)
+
+            topics = [
+                (f"{self.topic_path}/CH{1} Voltage", voltage),
+                (f"{self.topic_path}/CH{1} Resistance", resistance),
+                (f"{self.topic_path}/CH{2} Voltage", voltage),
+                (f"{self.topic_path}/CH{2} Resistance", resistance)
+            ]
+
+            for i in topics:
+                self.client.publish(i[0], i[1])
+
 
 def test():
-    broker = "192.168.0.104"
+    # broker = "192.168.0.104"
+    broker = "127.0.0.1"
+
     port = 1883
 
     mqtt_sensor = Test_MQTTPublisher(broker=broker, port=port, channel_number=1)

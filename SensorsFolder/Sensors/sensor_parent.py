@@ -12,6 +12,7 @@ class Sensor(ABC):
         self.type = SensorType.NONE
         if path != None:
             self.load_config(path)
+        self.name = "sensor"
 
     @abstractmethod
     def load_config(self, path : str):

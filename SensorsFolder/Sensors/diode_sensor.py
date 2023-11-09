@@ -8,12 +8,9 @@ logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
 class DiodeSensor(Sensor):
-    def __init__(self, path=None, current=100, func_type="liner"):
+    def __init__(self, path=None, current=100):
         super().__init__(path, current)
         self.type = SensorType.VOLTAGE
-        self.func_type = func_type
-        if self.func_type == "approx":
-            self.approximation()
 
     def load_config(self, path : str):
         """
@@ -43,42 +40,32 @@ class DiodeSensor(Sensor):
         if len(self.config) == 0:
             logger.exception("Config is empty")
             self.event_error("Config is empty")
+            return
 
         if voltage < list(self.config.keys())[0]:
             self.event_error("Voltage less min limit sensor")
+            return
         
         if voltage > list(self.config.keys())[-1]:
             self.event_error("Voltage more max limit sensor")
+            return
 
         temperature = -1
-        if self.func_type == "liner":
-            prev = 0
-            for key in self.config:
-                if key > voltage:
 
-                    k = (self.config[key] - self.config[prev])/(key - prev)
-                    b = self.config[key] - k * key
-                    temperature = (k * voltage + b)
-                    
-                    break
-                prev = key
-        else:
-            temperature = self.func(voltage, *self.popt)
+        prev = 0
+        for key in self.config:
+            if key > voltage:
+
+                k = (self.config[key] - self.config[prev])/(key - prev)
+                b = self.config[key] - k * key
+                temperature = (k * voltage + b)
+                
+                break
+            prev = key
         
         return temperature
     
     def convert_to_C(self, voltage : float) -> float:
         temperature = self.convert(voltage)
         return self.convert_K_to_C(temperature)
-
-
-    def approximation(self):
-        self.func = self.function_approx
-        self.popt, self.pcov = curve_fit(self.func, list(self.config.keys()), list(self.config.values()))
-
-    def function_approx(self, x, a, b, c, d, f, g, n) -> float:
-        return a * x**6 + b * x**5 + c * x**4 + d * x**3 + g * x**2 + f * x + n
-    
-    def liner_function(self, x, a, b) -> float:
-        return a * x + b
     
