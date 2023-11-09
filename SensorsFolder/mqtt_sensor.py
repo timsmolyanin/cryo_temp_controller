@@ -7,6 +7,7 @@ from Filters import *
 from loguru import logger
 import sys
 import random
+from pathlib import Path
 logger.remove()
 logger.add(sys.stdout, level="DEBUG")
 
@@ -23,16 +24,18 @@ class MQTTSensor(Thread):
 
         self.buffer_size = buffer_size
 
-        self.config_file_path = "SensorsFolder/Sensors/ConfigFolder"
+        # self.config_file_path = "~/measure_module/Sensors"
+        self.config_file_path = Path(__file__).parent.joinpath('Sensors').joinpath('ConfigFolder')
 
-        self.topic_path = "/devices/MeasureModule"
+        self.topic_path = "/devices/MeasureModule/controls"
+        self.out_topic_path = '/devices/FilteredValues/controls'
         self.topics = [
-            (f"{self.topic_path}/CH{self.channel_number}/SensorModel", 0),
-            (f"{self.topic_path}/CH{self.channel_number}/ConfigFname", 0),
-            (f"{self.topic_path}/CH{self.channel_number}/FilterType", 0),
-            (f"{self.topic_path}/CH{self.channel_number}/FilterBufferSize", 0),
-            (f"{self.topic_path}/CH{self.channel_number}/Voltage", 0),
-            (f"{self.topic_path}/CH{self.channel_number}/Resistance", 0)
+            (f"{self.topic_path}/CH{self.channel_number} SensorModel", 0),
+            (f"{self.topic_path}/CH{self.channel_number} ConfigFname", 0),
+            (f"{self.topic_path}/CH{self.channel_number} FilterType", 0),
+            (f"{self.topic_path}/CH{self.channel_number} FilterBufferSize", 0),
+            (f"{self.topic_path}/CH{self.channel_number} Voltage", 0),
+            (f"{self.topic_path}/CH{self.channel_number} Resistance", 0)
         ]
 
         self.sensor = None
@@ -61,94 +64,94 @@ class MQTTSensor(Thread):
         # print(f"Message received [{msg.topic}]: {msg.payload.decode()}")
         topic = msg.topic.split("/")[1:]
         playload = msg.payload.decode()
-        if msg.topic.startswith(f"{self.topic_path}/CH{self.channel_number}"): 
-            match topic[-1]:
-                case "SensorModel":
-                    print("Switch Sensor")
-                    match playload:
-                        case "Diode":
-                            self.sensor = DiodeSensor(current=100)
-                        case "Pt1000":
-                            self.sensor = PtSensor(current=45)
-                        case "Pt100":
-                            self.sensor = PtSensor(current=40)
-                        case _: # мы не знаем такого типа датчика
-                            raise ValueError(f'Could not resolve sensor type {playload}')
-                        # case "TVO":
-                        #     pass
+        # if msg.topic.startswith(f"{self.topic_path}/CH {self.channel_number}"): 
+        match topic[-1].split(' ')[-1]:
+            case "SensorModel":
+                print("Switch Sensor")
+                match playload:
+                    case "Diode":
+                        self.sensor = DiodeSensor(current=100)
+                    case "Pt1000":
+                        self.sensor = PtSensor(current=45)
+                    case "Pt100":
+                        self.sensor = PtSensor(current=40)
+                    case _: # мы не знаем такого типа датчика
+                        raise ValueError(f'Could not resolve sensor type {playload}')
+                    # case "TVO":
+                    #     pass
+                    
                         
-                            
-                    if self.sensor == None:
-                        self.publish_error("Sensor = None")
-                        return
-                    
-                    client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/SetCurrent", payload=self.sensor.current)
-                    self.sensor.event_error = self.publish_error
+                if self.sensor == None:
+                    self.publish_error("Sensor = None")
+                    return
+                
+                client.publish(topic=f"{self.topic_path}/CH {self.channel_number} SetCurrent", payload=self.sensor.current)
+                self.sensor.event_error = self.publish_error
 
-                    if self.filterType == None:
-                        self.publish_error("FilterType = None")
-                        return
-                    
-                    self.filterType.clear()
+                if self.filterType == None:
+                    self.publish_error("FilterType = None")
+                    return
+                
+                self.filterType.clear()
 
-                case "ConfigFname":
-                    print("Config")
-                    try:
-                        self.sensor.load_config(f"{self.config_file_path}/{playload}")
-                    except Exception as e:
-                        self.publish_error(str(e))
+            case "ConfigFname":
+                print("Config")
+                try:
+                    self.sensor.load_config(self.config_file_path.joinpath(playload))
+                except Exception as e:
+                    self.publish_error(str(e))
 
-                case "FilterType":
-                    print("Switch Filter " + playload)
-                    match playload:
-                        case "Median":
-                            self.filterType = Median(self.buffer_size)
-                        case "MovingAverage":
-                            self.filterType = MovingAverage(self.buffer_size)
-                        case _:
-                            raise ValueError(f'Could not resolve filter type {playload}')
+            case "FilterType":
+                print("Switch Filter " + playload)
+                match playload:
+                    case "Median":
+                        self.filterType = Median(self.buffer_size)
+                    case "MovingAverage":
+                        self.filterType = MovingAverage(self.buffer_size)
+                    case _:
+                        raise ValueError(f'Could not resolve filter type {playload}')
 
-                case "FilterBufferSize":
-                    print("Change Buffer", playload)
-                    try:
-                        f_playload = float(playload)
-                    except Exception as e:
-                        self.publish_error(str(e))
-                        return
-                    
-                    if self.filterType == None:
-                        self.publish_error("FilterType = None")
-                        return
-                    
-                    self.filterType.change_buffer(int(f_playload))
+            case "FilterBufferSize":
+                print("Change Buffer", playload)
+                try:
+                    f_playload = float(playload)
+                except Exception as e:
+                    self.publish_error(str(e))
+                    return
+                
+                if self.filterType == None:
+                    self.publish_error("FilterType = None")
+                    return
+                
+                self.filterType.change_buffer(int(f_playload))
 
-                case "Voltage":
-                    try:
-                        f_playload = float(playload)
-                    except Exception as e:
-                        self.publish_error(str(e))
-                        return
+            case "Voltage":
+                try:
+                    f_playload = float(playload)
+                except Exception as e:
+                    self.publish_error(str(e))
+                    return
 
-                    if self.sensor == None:
-                        self.publish_error("Sensor = None")
-                        return
-                    
-                    if self.sensor.type == SensorType.VOLTAGE:
-                        self.convert(f_playload)
+                if self.sensor == None:
+                    self.publish_error("Sensor = None")
+                    return
+                
+                if self.sensor.type == SensorType.VOLTAGE:
+                    self.convert(f_playload)
 
-                case "Resistance":
-                    try:
-                        f_playload = float(playload)
-                    except Exception as e:
-                        self.publish_error(str(e))
-                        return
+            case "Resistance":
+                try:
+                    f_playload = float(playload)
+                except Exception as e:
+                    self.publish_error(str(e))
+                    return
 
-                    if self.sensor == None:
-                        self.publish_error("Sensor = None")
-                        return
-                    
-                    if self.sensor.type == SensorType.RESISTANCE:
-                        self.convert(f_playload)
+                if self.sensor == None:
+                    self.publish_error("Sensor = None")
+                    return
+                
+                if self.sensor.type == SensorType.RESISTANCE:
+                    self.convert(f_playload)
 
 
 
@@ -162,17 +165,17 @@ class MQTTSensor(Thread):
     def convert(self, playload : float):
         try:
             self.filterType.add_value(float(playload))
-            self.client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/Temperature", payload=self.sensor.convert(self.filterType.filtering()))
+            self.client.publish(topic=f"{self.out_topic_path}/CH {self.channel_number} Temperature", payload=self.sensor.convert(self.filterType.filtering()))
         except Exception as e:
             self.publish_error(str(e))
             
 
     def publish_error(self, massage):
-        self.client.publish(topic=f"{self.topic_path}/CH{self.channel_number}/State", payload=str(massage))
+        self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} State", payload=str(massage))
         logger.error(massage)
 
 def test():
-    broker = "127.0.0.1"
+    broker = "192.168.0.104"
     port = 1883
 
     mqtt_sensor1 = MQTTSensor(broker=broker, port=port, channel_number=1)
@@ -181,43 +184,7 @@ def test():
     mqtt_sensor2 = MQTTSensor(broker=broker, port=port, channel_number=2)
     mqtt_sensor2.start()
 
-    mqtt_sensor3 = MQTTSensor(broker=broker, port=port, channel_number=3)
-    mqtt_sensor3.start()
 
-    mqtt_sensor4 = MQTTSensor(broker=broker, port=port, channel_number=4)
-    mqtt_sensor4.start()
-
-    topics = [
-            (f"/devices/MeasureModule/CH1/SensorModel", "Pt1000"),
-            (f"/devices/MeasureModule/CH1/ConfigFname", "pt1000_config_2.txt"),
-            (f"/devices/MeasureModule/CH1/FilterType", "Median"),
-            (f"/devices/MeasureModule/CH1/FilterBufferSize", 20)
-        ]
-    publish.multiple(topics, hostname=broker, port=port)
-
-    topics = [
-            (f"/devices/MeasureModule/CH2/SensorModel", "Pt1000"),
-            (f"/devices/MeasureModule/CH2/ConfigFname", "pt1000_config.txt"),
-            (f"/devices/MeasureModule/CH2/FilterType", "Median"),
-            (f"/devices/MeasureModule/CH2/FilterBufferSize", 20)
-        ]
-    publish.multiple(topics, hostname=broker, port=port)
-
-    topics = [
-            (f"/devices/MeasureModule/CH3/SensorModel", "Diode"),
-            (f"/devices/MeasureModule/CH3/ConfigFname", "diode_config_2.txt"),
-            (f"/devices/MeasureModule/CH3/FilterType", "Median"),
-            (f"/devices/MeasureModule/CH3/FilterBufferSize", 20)
-        ]
-    publish.multiple(topics, hostname=broker, port=port)
-
-    topics = [
-            (f"/devices/MeasureModule/CH4/SensorModel", "Diode"),
-            (f"/devices/MeasureModule/CH4/ConfigFname", "diode_config_2.txt"),
-            (f"/devices/MeasureModule/CH4/FilterType", "MovingAverage"),
-            (f"/devices/MeasureModule/CH4/FilterBufferSize", 20)
-        ]
-    publish.multiple(topics, hostname=broker, port=port)
 
 if __name__ == "__main__":
     test()

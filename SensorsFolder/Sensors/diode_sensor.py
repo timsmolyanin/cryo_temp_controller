@@ -38,6 +38,8 @@ class DiodeSensor(Sensor):
             If voltage > max limit or voltage < min limit, return Exception(`Incorrect voltage`). 
         """
 
+        voltage /=1000 # V to mV
+
         if len(self.config) == 0:
             logger.exception("Config is empty")
             self.event_error("Config is empty")

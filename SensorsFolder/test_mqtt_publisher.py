@@ -20,14 +20,14 @@ class Test_MQTTPublisher(Thread):
         self.client_id = f'publish-{random.randint(0, 100)}'
         self.channel_number = channel_number
 
-        self.topic_path = "/devices/MeasureModule"
+        self.topic_path = "/devices/MeasureModule/controls"
         
 
     def run(self):
         self.client = self.connect_mqtt("MQTT Publisher Test")
-        self.client.loop_start()
+        # self.client.loop_start()
         self.publish()
-        self.client.loop_stop()
+        # self.client.loop_stop()
 
     def connect_mqtt(self, whois : str) -> mqtt_client: 
 
@@ -46,36 +46,22 @@ class Test_MQTTPublisher(Thread):
     
     def publish(self):
 
-        for i in range(4):
-            self.topics = [
-                (f"{self.topic_path}/CH{i+1}/SensorModel", 0),
-                (f"{self.topic_path}/CH{i+1}/ConfigFname", 0),
-                (f"{self.topic_path}/CH{i+1}/FilterType", 0),
-                (f"{self.topic_path}/CH{i+1}/FilterBufferSize", 0),
-                (f"{self.topic_path}/CH{i+1}/Voltage", 0),
-                (f"{self.topic_path}/CH{i+1}/Resistance", 0),
-                (f"{self.topic_path}/CH{i+1}/Temperature", 0),
-                (f"{self.topic_path}/CH{i+1}/SetCurrent", 0),
-                (f"{self.topic_path}/CH{i+1}/State", 0)
-            ]
-            for i in self.topics:
-                self.client.publish(i[0], i[1])
+        self.topics = [
+            (f"{self.topic_path}/CH{1} SensorModel", 'Diode'),
+            (f"{self.topic_path}/CH{1} ConfigFname", 'diode_config.txt'),
+            (f"{self.topic_path}/CH{1} FilterType", 'Median'),
+            (f"{self.topic_path}/CH{1} FilterBufferSize", 10),
+            (f"{self.topic_path}/CH{2} SensorModel", 'Pt100'),
+            (f"{self.topic_path}/CH{2} ConfigFname", 'pt100_config.txt'),
+            (f"{self.topic_path}/CH{2} FilterType", 'Median'),
+            (f"{self.topic_path}/CH{2} FilterBufferSize", 10),
+        ]
+        for i in self.topics:
+            self.client.publish(i[0], i[1], retain=True)
 
-        while True:
-            sleep(1)
-            voltage = 1.01 + (random.random() * 0.02 - 0.01)
-            resistance = 1000 + (random.random() * 50 - 25)
-            for i in range(4):
-                topics = [
-                    (f"{self.topic_path}/CH{i+1}/Voltage", voltage),
-                    (f"{self.topic_path}/CH{i+1}/Resistance", resistance)
-                ]
-
-                for i in topics:
-                    self.client.publish(i[0], i[1])
 
 def test():
-    broker = "127.0.0.1"
+    broker = "192.168.0.104"
     port = 1883
 
     mqtt_sensor = Test_MQTTPublisher(broker=broker, port=port, channel_number=1)
