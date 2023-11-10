@@ -1,8 +1,6 @@
 from Sensors import Sensor
 from Sensors import SensorType
 from loguru import logger
-from scipy.optimize import curve_fit
-import numpy as np
 import sys
 logger.remove()
 logger.add(sys.stdout, level="DEBUG")
