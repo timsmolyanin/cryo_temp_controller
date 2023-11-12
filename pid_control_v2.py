@@ -31,19 +31,26 @@ class PIDControl(Thread):
         self.topic_list = topic_list
         
         self.input_value = 0.0
-        self.setpoint_value = 300.0
+        self.setpoint_value = 0.0
+        self.over_regulation_percent = 1
+        self.state = 0
 
-        self.__measurements_buffer_size = 20
+        self.__measurements_buffer_size = 5
         self.__measurements_buffer = []
         
-        self.__kp = kp
-        self.__ki = ki
-        self.__kd = kd
+        # self.__kp = kp
+        # self.__ki = ki
+        # self.__kd = kd
+        self.__kp = 7826.9163248793075
+        self.__ki = 25.267158409925372
+        self.__kd = 0.0
+        
         self.__control_loop_period = 1
+        
         self.__pid_min = 0.0
-        self.__pid_max = 0.0
+        self.__pid_max = 20.0
 
-        self.__pid = PID(self.__kp, self.__ki, self.__kd, setpoint=self.setpoint_value)
+        self.__pid = PID(self.__kp, self.__ki, self.__kd, setpoint=self.setpoint_value, output_limits=(self.__pid_min * 1310.7, self.__pid_max * 1310.7))
         
         self.name = "PID_control_v2"
         
@@ -52,7 +59,7 @@ class PIDControl(Thread):
         for i in range(len(buffer) - 1):
             if buffer[i + 1] > buffer[i]:
                 if i == (len(buffer) - 2):
-                    return "Heating"
+                    return "In process Up"
             else:
                 break
         
@@ -60,7 +67,7 @@ class PIDControl(Thread):
         for i in range(len(buffer) - 1):
             if buffer[i + 1] < buffer[i]:
                 if i == (len(buffer) - 2):
-                    return "Cooling"
+                    return "In process Down"
             else:
                 break
         
@@ -68,13 +75,13 @@ class PIDControl(Thread):
         for i in range(len(buffer)):
             if buffer[i] < self.setpoint_value:
                 if i == (len(buffer) - 1):
-                    return "Not enough voltage"
+                    return "PID limits Error"
             else:
                 break
         
         #Есть ли перерегулирование
         for i in range(len(buffer)):
-            if (buffer[i] > self.setpoint_value) and ((buffer[i] - self.setpoint_value) > (self.setpoint_value * 0.01)):
+            if (buffer[i] - self.setpoint_value) > (self.setpoint_value * (self.over_regulation_percent / 100)):
                 if i == (len(buffer) - 1):
                     return "Over-regulation"
             else:
@@ -82,21 +89,25 @@ class PIDControl(Thread):
         
         #Всё впорядке
         for i in range(len(buffer)):
-            if (abs(buffer[i] - self.setpoint_value) <= (self.setpoint_value * 0.01)):
+            if abs(buffer[i] - self.setpoint_value) <= (self.setpoint_value * (self.over_regulation_percent / 100)):
                 if i == (len(buffer) - 1):
-                    return "All good"
+                    return "Ok"
             else:
                 break
         return "Unexpected case"
                 
                                          
+    #Наверное здесь ещё нужно публиковать топик, который в дисплее будет уведомлять, что у нас режим ожидания
     def mode_wait(self):
-        logger.debug("Включен режим ожидания")
-        #Наверное здесь ещё нужно публиковать топик, который в дисплее будет уведомлять, что у нас режим ожидания
         pass    
 
                                          
     def mode_control(self):
+
+        #PID'уем
+        self.mqtt_publish_topic(self.topic_list["output_value"], int(self.__pid(self.input_value)))
+        logger.debug(f"{self.__pid(self.input_value)} - Значение, которое выдал PID регулятор")
+        
         #Копируем буфер, чтобы во время парсинга он не менялся
         buffer = self.__measurements_buffer.copy()
         
@@ -110,24 +121,24 @@ class PIDControl(Thread):
             self.__measurements_buffer = []
             parse_result = self.parse_buffer(buffer)
             match parse_result:
-                case "Heating":
+                case "In process Up":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
-                case "Cooling":
+                case "In process Down":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
-                case "Not enough voltage":
+                case "PID limits Error":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Over-regulation":
-                    #mqtt_publish_topic(self, <имя топика?>, parse_result)
-                    self.set_run_mode(self.mode_wait)
+                    
+                    self.mqtt_publish_topic(self.topic_list["output_state"], 0)
                     logger.debug(f"Состояние: {parse_result}")
                     return
-                case "All good":
+                case "Ok":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
@@ -156,32 +167,37 @@ class PIDControl(Thread):
         logger.debug(f"Regulator {self.name} is started")
         
         #Выбираем режим управления
-        self.set_run_mode(self.mode_control)
+        self.set_run_mode(self.mode_wait)
+        logger.debug("Включен режим ожидания")
         
         while True:
-            
             #Вызываем текущий режим управления
             self.run_mode()
+            
             #Sleep
             time.sleep(self.__control_loop_period)
 
 
     def set_pid_limits(self, min: float, max: float):
-        self.__pid_min = min
+        self.__pid_min = min 
         self.__pid_max = max
+        self.__pid.output_limits = (self.__pid_min * 1310.7, self.__pid_max * 1310.7)
     
-
     def set_pid_kp_value(self, value):
         
         self.__kp = float(value)
+        self.__pid.Kp = self.__kp
         
     def set_pid_ki_value(self, value):
         
         self.__ki = float(value)
+        self.__pid.Ki = self.__ki
+        
         
     def set_pid_kd_value(self, value):
         
         self.__kd = float(value)
+        self.__pid.Kd = self.__kd
     
     def set_pid_tunings(self):
         
@@ -191,18 +207,25 @@ class PIDControl(Thread):
 
     def set_setpoint_value(self, setpoint):
         self.setpoint_value = float(setpoint)
+        self.__pid.setpoint = self.setpoint_value
+        self.__measurements_buffer.clear()
         logger.debug(f"setpoint_value = {float(self.setpoint_value)}")
-
+    
+    def set_input_value(self, value):
+        self.input_value = value
+        self.__measurements_buffer.append(value)
     
 
     def set_buffer_size(self, buffer_size):
 
-        self.__buffer_size = int(buffer_size)
+        self.__measurements_buffer_size = int(buffer_size)
 
 
     def set_control_loop_period(self, loop_period: float):
         
         self.__control_loop_period = float(loop_period)
+        
+        
 
 
 
@@ -228,13 +251,15 @@ class PIDControl(Thread):
     def unsubscribe(self, client: mqtt):
         
         for key, value in self.topic_list.items():
-            client.unsubscribe(value)
+            if not "output" in key:
+                client.unsubscribe(value)
     
 
     def subscribe(self, client: mqtt):
         
         for key, value in self.topic_list.items():
-            client.subscribe(value)
+            if not "output" in key:
+                client.subscribe(value)
         client.on_message = self.on_message
         
     def change_topic(self, topic_to_change, topic):
@@ -250,12 +275,24 @@ class PIDControl(Thread):
         for key, v in self.topic_list.items():
             if v == value:
                 return key
+        
+    def set_state(self, value):
+        self.state = int(value)
+        if self.state == 0:
+            self.set_run_mode(self.mode_wait)
+            self.mqtt_publish_topic(self.topic_list["output_value"], 0)
+            logger.debug("Включен режим ожидания")
+        if self.state == 1:
+            self.set_run_mode(self.mode_control)
+            logger.debug("Включен режим управления")
+        self.__measurements_buffer.clear()
     
     def on_message(self, client, userdata, msg):
         
         config = {
             self.topic_list["input_setpoint_value"] : self.set_setpoint_value,
-            self.topic_list["input_value"] : self.__measurements_buffer.append,
+            self.topic_list["input_value"] : self.set_input_value,
+            self.topic_list["input_state"] : self.set_state,
             self.topic_list["input_PID_values_P_value"] : self.set_pid_kp_value,
             self.topic_list["input_PID_values_I_value"] : self.set_pid_ki_value,
             self.topic_list["input_PID_values_D_value"] : self.set_pid_kd_value,
