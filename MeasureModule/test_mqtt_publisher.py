@@ -46,38 +46,41 @@ class Test_MQTTPublisher(Thread):
     
     def publish(self):
 
+        i_CH1 = 1
+        i_CH2 = 2
+
         self.topics = [
-            (f"{self.topic_path}/CH{1} SensorModel", 'Diode'),
-            (f"{self.topic_path}/CH{1} ConfigFname", 'diode_config.txt'),
-            (f"{self.topic_path}/CH{1} FilterType", 'Median'),
-            (f"{self.topic_path}/CH{1} FilterBufferSize", 10),
-            (f"{self.topic_path}/CH{2} SensorModel", 'Pt100'),
-            (f"{self.topic_path}/CH{2} ConfigFname", 'pt100_config.txt'),
-            (f"{self.topic_path}/CH{2} FilterType", 'Median'),
-            (f"{self.topic_path}/CH{2} FilterBufferSize", 10),
+            (f"{self.topic_path}/CH{i_CH1} SensorModel", 'Diode'),
+            (f"{self.topic_path}/CH{i_CH1} ConfigFname", 'diode_config.txt'),
+            (f"{self.topic_path}/CH{i_CH1} FilterType", 'Median'),
+            (f"{self.topic_path}/CH{i_CH1} FilterBufferSize", 10),
+            (f"{self.topic_path}/CH{i_CH2} SensorModel", 'Pt1000'),
+            (f"{self.topic_path}/CH{i_CH2} ConfigFname", 'pt1000_config_2.txt'),
+            (f"{self.topic_path}/CH{i_CH2} FilterType", 'Median'),
+            (f"{self.topic_path}/CH{i_CH2} FilterBufferSize", 10),
         ]
         for i in self.topics:
             self.client.publish(i[0], i[1], retain=True)
 
-        while True:
-            sleep(1)
-            voltage = 1010 + (random.random() * 20 - 10)
-            resistance = 300 + (random.random() * 100 - 50)
+        # while True:
+        #     sleep(1)
+        #     voltage = 1010 + (random.random() * 20 - 10)
+        #     resistance = 300 + (random.random() * 100 - 50)
 
-            topics = [
-                (f"{self.topic_path}/CH{1} Voltage", voltage),
-                (f"{self.topic_path}/CH{1} Resistance", resistance),
-                (f"{self.topic_path}/CH{2} Voltage", voltage),
-                (f"{self.topic_path}/CH{2} Resistance", resistance)
-            ]
+        #     topics = [
+        #         (f"{self.topic_path}/CH{1} Voltage", voltage),
+        #         (f"{self.topic_path}/CH{1} Resistance", resistance),
+        #         (f"{self.topic_path}/CH{2} Voltage", voltage),
+        #         (f"{self.topic_path}/CH{2} Resistance", resistance)
+        #     ]
 
-            for i in topics:
-                self.client.publish(i[0], i[1])
+        #     for i in topics:
+        #         self.client.publish(i[0], i[1])
 
 
 def test():
-    # broker = "192.168.0.104"
-    broker = "127.0.0.1"
+    broker = "192.168.0.104"
+    # broker = "127.0.0.1"
 
     port = 1883
 
