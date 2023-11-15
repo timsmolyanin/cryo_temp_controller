@@ -33,6 +33,7 @@ class MeasureModule():
                 (f"{self.topic_path}/CH{self.channel_number} SensorModel", 0),
                 (f"{self.topic_path}/CH{self.channel_number} ConfigFname", 0),
                 (f"{self.topic_path}/CH{self.channel_number} FilterBufferSize", 0),
+                (f"{self.topic_path}/CH{self.channel_number} Current", 0),
                 # (f"{self.topic_path}/CH{self.channel_number} Voltage", 0),
                 # (f"{self.topic_path}/CH{self.channel_number} Resistance", 0)
             ]
@@ -129,8 +130,10 @@ class MeasureModule():
                     match playload:
                         case "Median":
                             self.value_filter = Median(self.buffer_size)
+                            self.current_filter = Median(self.buffer_size)
                         case "MovingAverage":
                             self.value_filter = MovingAverage(self.buffer_size)
+                            self.current_filter = MovingAverage(self.buffer_size)
                         case _:
                             raise ValueError(f'Could not resolve filter type {playload}')
 
@@ -140,6 +143,7 @@ class MeasureModule():
                     logger.debug(f'CH{self.channel_number}: Filter buffer size changed to {playload}')
                     f_playload = float(playload)                    
                     self.value_filter.change_buffer_size(int(f_playload))
+                    self.current_filter.change_buffer_size(int(f_playload))
 
                 case "Voltage":
                     f_playload = float(playload)
@@ -157,6 +161,13 @@ class MeasureModule():
                         raise TypeError('Incorrect sensor type')
                     self.convert(f_playload)
 
+                case "Current":
+                    if self.current_filter is None:
+                        raise AttributeError("Current filter is not initialized")
+                    filtered_value = self.current_filter.filter_value(float(playload))
+                    self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Current", payload=f'{filtered_value:.03f}')
+                    return # no need to reset state to OK here
+
             self.publish_state("OK")
         except Exception as err:
             self.publish_state(err)     
@@ -172,7 +183,8 @@ class MeasureModule():
 
     def convert(self, playload : float):
         filtered_value = self.value_filter.filter_value(float(playload))
-        self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Temperature", payload=self.sensor.convert(filtered_value))
+        filtered_value = self.sensor.convert(filtered_value)
+        self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Temperature", payload=f'{filtered_value:.03f}')
         self.last_value_update_time = time()
 
 
