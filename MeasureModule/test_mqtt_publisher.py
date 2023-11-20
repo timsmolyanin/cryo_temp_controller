@@ -46,12 +46,12 @@ class Test_MQTTPublisher(Thread):
     
     def publish(self):
 
-        i_CH1 = 1
-        i_CH2 = 2
+        i_CH1 = 2
+        i_CH2 = 1
 
         self.topics = [
             (f"{self.topic_path}/CH{i_CH1} SensorModel", 'Diode'),
-            (f"{self.topic_path}/CH{i_CH1} ConfigFname", 'diode_config.txt'),
+            (f"{self.topic_path}/CH{i_CH1} ConfigFname", 'CDA005.340'),
             (f"{self.topic_path}/CH{i_CH1} FilterType", 'Median'),
             (f"{self.topic_path}/CH{i_CH1} FilterBufferSize", 10),
             (f"{self.topic_path}/CH{i_CH2} SensorModel", 'Pt1000'),
@@ -60,7 +60,7 @@ class Test_MQTTPublisher(Thread):
             (f"{self.topic_path}/CH{i_CH2} FilterBufferSize", 10),
         ]
         for i in self.topics:
-            self.client.publish(i[0], i[1], retain=True)
+            self.client.publish(i[0], i[1], retain=True, qos=2)
 
         # while True:
         #     sleep(1)

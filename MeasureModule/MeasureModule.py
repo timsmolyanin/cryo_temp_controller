@@ -39,19 +39,23 @@ class MeasureModule():
             self.sensor = None
             self.value_filter = None
             self.state = 'INIT'
+            self.cur_err_priority = 0
             self.last_value_update_time = time()
             self.is_connected = False
             self.timeout_thread = None
         except Exception as err:
-            self.publish_state(err)
+            self.publish_state(err, 2)
 
 
     def start(self):
-        self.connect_mqtt(f"MQTT Sensor CH{self.channel_number}")
-        self.subscribe()
-        self.client.loop_start() # starts a separate thread (created by paho library)
-        self.timeout_thread = Thread(target=self.check_timeout, daemon=True)
-        self.timeout_thread.start()
+        try:
+            self.connect_mqtt(f"MQTT Sensor CH{self.channel_number}")
+            self.subscribe()
+            self.client.loop_start() # starts a separate thread (created by paho library)
+            self.timeout_thread = Thread(target=self.check_timeout, daemon=True)
+            self.timeout_thread.start()
+        except Exception as err:
+            self.publish_state(err, 2)
 
 
     def check_timeout(self):
@@ -60,7 +64,7 @@ class MeasureModule():
             if not self.is_connected or self.state !='OK':
                 continue
             if time() - self.last_value_update_time >10: # check last refresh time
-                self.publish_state(TimeoutError(f'Temperature has not been refreshed for more than 10 seconds.'))
+                self.publish_state(TimeoutError(f'Temperature has not been refreshed for more than 10 seconds.'), 1)
 
     
     def connect_mqtt(self, whois : str):        
@@ -72,17 +76,20 @@ class MeasureModule():
 
 
     def on_connect(self, client, userdata, flags, rc):
+        try:
             if rc == 0:
                 logger.debug(f"CH{self.channel_number}: Connected to MQTT Broker!")
                 self.is_connected = True
                 self.publish_state('OK')
             else:
-                self.publish_state(f'Could not connect to MQTT broker, return code {rc}')
+                raise ConnectionError(f'Could not connect to MQTT broker, return code {rc}')
+        except Exception as err:
+            self.publish_state(err, 2)
 
 
     def on_disconnect(self, client, userdata, rc):
         self.is_connected = False
-        self.publish_state(ConnectionError('Lost connection to mqtt broker, attempting to reconnect'))
+        self.publish_state(ConnectionError('Lost connection to mqtt broker, attempting to reconnect'), 2)
 
 
     def on_message(self, client : mqtt_client, userdata, msg : MQTTMessage):
@@ -102,7 +109,7 @@ class MeasureModule():
                         case "Pt100":
                             self.sensor = PtSensor(current=40)
                         case _: # мы не знаем такой тип датчика
-                            raise ValueError(f'Could not resolve sensor type `{playload}`. Current sensor type: {self.sensor.name}')
+                            raise TypeError(f'Could not resolve sensor type `{playload}`. Current sensor type: {self.sensor.name}')
                     
                     match self.sensor.type:
                         case SensorType.VOLTAGE:
@@ -110,7 +117,7 @@ class MeasureModule():
                         case SensorType.RESISTANCE:
                             client.subscribe(f"{self.topic_path}/CH{self.channel_number} Resistance", 0)
                         case _:
-                            raise ValueError(f'SensorType error')
+                            raise TypeError(f'SensorType error')
                         
                     logger.debug(f"CH{self.channel_number}: SensorModel changed to {playload}")
                     client.publish(topic=f"{self.topic_path}/CH{self.channel_number} SetCurrent", payload=self.sensor.current)
@@ -121,18 +128,19 @@ class MeasureModule():
 
                 case "ConfigFname":
                     logger.debug(f"CH{self.channel_number}: ConfigFname changed to {playload}")
-                    self.sensor.load_config(self.config_file_path.joinpath(playload))
-                    # self.publish_state("OK")
+                    self.sensor.load_config(str(self.config_file_path.joinpath(playload)))
                     
                 case "FilterType":
                     logger.debug(f"CH{self.channel_number}: Filter type changed to {playload}")
                     match playload:
                         case "Median":
                             self.value_filter = Median(self.buffer_size)
+                            self.current_filter = Median(self.buffer_size)
                         case "MovingAverage":
                             self.value_filter = MovingAverage(self.buffer_size)
+                            self.current_filter = MovingAverage(self.buffer_size)
                         case _:
-                            raise ValueError(f'Could not resolve filter type {playload}')
+                            raise TypeError(f'Could not resolve filter type {playload}')
 
                 case "FilterBufferSize":
                     if self.value_filter == None:
@@ -140,6 +148,7 @@ class MeasureModule():
                     logger.debug(f'CH{self.channel_number}: Filter buffer size changed to {playload}')
                     f_playload = float(playload)                    
                     self.value_filter.change_buffer_size(int(f_playload))
+                    self.current_filter.change_buffer_size(int(f_playload))
 
                 case "Voltage":
                     f_playload = float(playload)
@@ -148,6 +157,7 @@ class MeasureModule():
                     if self.sensor.type != SensorType.VOLTAGE:
                         raise TypeError('Incorrect sensor type')
                     self.convert(f_playload)
+                    self.publish_state("OK")
 
                 case "Resistance":
                     f_playload = float(playload)
@@ -156,10 +166,21 @@ class MeasureModule():
                     if self.sensor.type != SensorType.RESISTANCE:
                         raise TypeError('Incorrect sensor type')
                     self.convert(f_playload)
+                    self.publish_state("OK")
 
-            self.publish_state("OK")
+                case "Current":
+                    if self.current_filter is None:
+                        raise AttributeError("Current filter is not initialized")
+                    filtered_value = self.current_filter.filter_value(float(playload))
+                    self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Current", payload=f'{filtered_value:.03f}')
+            
+        #process exceptions with priorities
+        except (ValueError, ZeroDivisionError) as err:
+            self.publish_state(err) 
+        except (AttributeError, TimeoutError, KeyError) as err:
+            self.publish_state(err, 1) 
         except Exception as err:
-            self.publish_state(err)     
+            self.publish_state(err, 2)     
 
 
     def subscribe(self):
@@ -172,20 +193,25 @@ class MeasureModule():
 
     def convert(self, playload : float):
         filtered_value = self.value_filter.filter_value(float(playload))
-        self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Temperature", payload=self.sensor.convert(filtered_value))
+        filtered_value = self.sensor.convert(filtered_value)
+        self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Temperature", payload=f'{filtered_value:.03f}')
         self.last_value_update_time = time()
 
 
-    def publish_state(self, massage):
-        if massage is self.state: # to avoid publishing same message multiple times
+    def publish_state(self, massage, err_priority = 0):
+        if str(massage) == str(self.state): # to avoid publishing same message multiple times
             return
         out_str = massage
         self.state = massage
         if isinstance(massage, Exception): 
+            if err_priority < self.cur_err_priority: # to avoid publishing lower priority errors
+                return
             out_str = f'{massage.__class__.__name__}: {out_str}' # adding exception type to message
             logger.error(f'CH{self.channel_number}: {out_str}')
+            self.cur_err_priority = err_priority
         else:
             logger.debug(f'CH{self.channel_number}: {out_str}')
+            self.cur_err_priority = 0
         self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} State", payload=out_str)
             
 
