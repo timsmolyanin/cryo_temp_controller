@@ -6,7 +6,6 @@ import paho.mqtt.client as mqtt
 import paho.mqtt.publish as publish
 import random
 import time
-import statistics
 from loguru import logger
 
 # Теперь у нас будет один файл со всеми списками топиков, которые нам нужны            <---NEW--->
@@ -17,8 +16,8 @@ logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 # The `PIDControl` class is a threaded class that implements a PID controller for a given MQTT broker
 # and port, with setpoint, feedback, and control topics, and specified PID parameters.
 class PIDControl(Thread):
-    def __init__(self, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_passw:str,
-                    kp:float, ki:float, kd:float, topic_list: dict,
+    def __init__(self, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_password: str, pid_max_range: int,
+                    kp: float, ki: float, kd: float,
                     parent=None):
         
         super(PIDControl, self).__init__(parent)
@@ -28,7 +27,7 @@ class PIDControl(Thread):
         self.client = ""
         self.client_id = f"dialtek-mqtt-{random.randint(0, 100)}"
         
-        self.topic_list = topic_list
+        self.topic_list = mqtt_topics_pid
         
         self.input_value = 0.0
         self.setpoint_value = 0.0
@@ -38,21 +37,24 @@ class PIDControl(Thread):
         self.__measurements_buffer_size = 5
         self.__measurements_buffer = []
         
-        # self.__kp = kp
-        # self.__ki = ki
-        # self.__kd = kd
-        self.__kp = 7826.9163248793075
-        self.__ki = 25.267158409925372
-        self.__kd = 0.0
+        # self.pid_max_range = 65535
+        self.pid_max_range = pid_max_range
+        self.__kp = kp
+        self.__ki = ki
+        self.__kd = kd
+        # self.__kp = 7826.9163248793075
+        # self.__ki = 25.267158409925372
+        # self.__kd = 0.0
         
         self.__control_loop_period = 1
         
-        self.__pid_min = 0.0
-        self.__pid_max = 20.0
+        self.__pid_max = 50
+        self.__pid_min = 0
+        self.__pid_k = 0 #1310,7
 
-        self.__pid = PID(self.__kp, self.__ki, self.__kd, setpoint=self.setpoint_value, output_limits=(self.__pid_min * 1310.7, self.__pid_max * 1310.7))
+        self.__pid = PID(self.__kp, self.__ki, self.__kd, setpoint=self.setpoint_value, output_limits=(0, self.pid_max_range))
         
-        self.name = "PID_control_v2"
+        self.name = "PID_control"
         
     def parse_buffer(self, buffer):
         #Идёт ли разогрев
@@ -178,10 +180,18 @@ class PIDControl(Thread):
             time.sleep(self.__control_loop_period)
 
 
-    def set_pid_limits(self, min: float, max: float):
-        self.__pid_min = min 
-        self.__pid_max = max
-        self.__pid.output_limits = (self.__pid_min * 1310.7, self.__pid_max * 1310.7)
+    def set_pid_limits_max(self, value):
+        self.__pid_max = float(value) #50
+        self.__pid_k = self.pid_max_range / (self.__pid_max - self.__pid_min) #65535 / (max - min)
+    
+        
+    def set_pid_limits_min(self, value):
+        self.__pid_min = float(value)
+        self.__pid_k = self.pid_max_range / (self.__pid_max - self.__pid_min) 
+    
+    def set_pid_current(self, value): # 0 - 50, 20 
+        self.__pid.output_limits(0, float(value) * self.__pid_k)
+   
     
     def set_pid_kp_value(self, value):
         
@@ -212,7 +222,7 @@ class PIDControl(Thread):
         logger.debug(f"setpoint_value = {float(self.setpoint_value)}")
     
     def set_input_value(self, value):
-        self.input_value = value
+        self.input_value = float(value)
         self.__measurements_buffer.append(value)
     
 
@@ -293,6 +303,7 @@ class PIDControl(Thread):
             self.topic_list["input_setpoint_value"] : self.set_setpoint_value,
             self.topic_list["input_value"] : self.set_input_value,
             self.topic_list["input_state"] : self.set_state,
+            self.topic_list["input_pid_current"] : self.set_pid_current,
             self.topic_list["input_PID_values_P_value"] : self.set_pid_kp_value,
             self.topic_list["input_PID_values_I_value"] : self.set_pid_ki_value,
             self.topic_list["input_PID_values_D_value"] : self.set_pid_kd_value,
@@ -304,8 +315,11 @@ class PIDControl(Thread):
         if ("change_topic" in self.get_key_by_value(topic_name)):
             self.change_topic(self.get_key_by_value(topic_name), topic_value)
         else:
-            config[topic_name](float(topic_value))
-            
+            try:
+                config[topic_name](topic_value)
+            except:
+                logger.debug(f"{self.name}: Ошибка в распознавании топика")
+                
         
         
         
@@ -335,7 +349,7 @@ def test():
     port = 1883
 
 
-    pid_test = PIDControl(broker, port, kp=kp, ki=ki, kd=kd, topic_list = mqtt_topics_pid, mqtt_user=None, mqtt_passw=None)
+    pid_test = PIDControl(broker, port, kp=kp, ki=ki, kd=kd, mqtt_user=None, mqtt_passw=None)
     pid_test.mqtt_start()
     pid_test.start()
         
