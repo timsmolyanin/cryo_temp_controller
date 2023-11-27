@@ -40,7 +40,7 @@ class MeasureModule():
             ]
             self.state_topic_path = f"{self.out_topic_path}/CH{self.channel_number} MeasureModule State"
             self.sensor = None
-            self.current_filter = none
+            self.current_filter = None
             self.value_filter = None
             self.last_value_update_time = time()
             self.is_connected = False
@@ -272,12 +272,14 @@ class HeaterConverter(MeasureModule):
                         raise AttributeError("Voltage filter is not initialized")
                     filtered_value = self.voltage_filter.filter_value(float(playload))
                     self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Heater LDO Voltage", payload=f'{filtered_value:.03f}')
+                    self.last_voltage = filtered_value
                     self.publish_state("OK")
                 case "Current":
                     if self.current_filter is None:
                         raise AttributeError("Current filter is not initialized")
                     filtered_value = self.current_filter.filter_value(float(playload))
                     self.client.publish(topic=f"{self.out_topic_path}/CH{self.channel_number} Heater LDO Current", payload=f'{filtered_value:.03f}')
+                    self.last_current = filtered_value
                     self.calculate_power()
                     self.publish_state("OK")
 
