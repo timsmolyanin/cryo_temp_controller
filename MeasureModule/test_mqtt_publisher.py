@@ -58,7 +58,7 @@ class Test_MQTTPublisher(Thread):
             # (f"{self.topic_path}/CH{i_CH2} ConfigFname", 'pt1000_config_2.txt'),
             # (f"{self.topic_path}/CH{i_CH2} FilterType", 'Median'),
             # (f"{self.topic_path}/CH{i_CH2} FilterBufferSize", 10),
-            (f"{self.topic_path}/CH{i_CH1} Heater FilterType", 'MovingAverage'),
+            (f"{self.topic_path}/CH{i_CH1} Heater FilterType", 'Median'),
             (f"{self.topic_path}/CH{i_CH1} Heater FilterBufferSize", 10),
         ]
         for i in self.topics:
