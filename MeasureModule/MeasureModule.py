@@ -103,6 +103,7 @@ class MeasureModule():
                 case "SensorModel":
                     client.unsubscribe(f"{self.in_topic_path}/CH{self.channel_number} Voltage")
                     client.unsubscribe(f"{self.in_topic_path}/CH{self.channel_number} Resistance")
+                    client.unsubscribe(f"{self.in_topic_path}/CH{self.channel_number} Current")
                     match playload:
                         case "Diode":
                             self.sensor = DiodeSensor(current=100)
@@ -120,7 +121,7 @@ class MeasureModule():
                             client.subscribe(f"{self.in_topic_path}/CH{self.channel_number} Resistance", 0)
                         case _:
                             raise TypeError(f'SensorType error')
-                        
+                    client.subscribe(f"{self.in_topic_path}/CH{self.channel_number} Current", 0)
                     logger.debug(f"CH{self.channel_number}: SensorModel changed to {playload}")
                     # client.publish(topic=f"{self.topic_path}/CH{self.channel_number} SetCurrent", payload=self.sensor.current) # not needed anymore
                     self.sensor.name = playload
