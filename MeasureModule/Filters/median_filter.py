@@ -2,8 +2,9 @@ from Filters import Filter
 from statistics import median
 
 class Median(Filter):
-    def __init__(self, buffer):
-        super().__init__(buffer)
+    def __init__(self, buffer_size):
+        super().__init__(buffer_size)
 
-    def filtering(self) -> float:
-        return median(self.window)
+    def filter_value(self, value:float) -> float:
+        super().filter_value(value)
+        return median(self.buffer)

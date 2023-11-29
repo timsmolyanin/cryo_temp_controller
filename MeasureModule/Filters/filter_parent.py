@@ -1,23 +1,26 @@
 from abc import ABC, abstractmethod
 
 class Filter(ABC):
-    def __init__(self, buffer):
-        self.buffer = buffer
-        self.window = list()
+    def __init__(self, buffer_size):
+        self.buffer_size = buffer_size
+        self.buffer = list()
 
     @abstractmethod
-    def filtering(self) -> float:
-        pass
+    def filter_value(self, value:float) -> float:
+        self.add_value(value)
 
-    def change_buffer(self, buffer : int) -> None:
-        if buffer < self.buffer:
-            self.window = self.window[self.buffer-buffer::] 
-        self.buffer = buffer
+
+    def change_buffer_size(self, new_buffer_size : int) -> None:
+        if new_buffer_size < self.buffer_size:
+            self.buffer = self.buffer[self.buffer_size-new_buffer_size::] 
+        self.buffer_size = new_buffer_size
+
 
     def add_value(self, value : float) -> None:
-        if len(self.window) >= self.buffer:
-            self.window = self.window[1:self.buffer:]
-        self.window.append(value)
+        if len(self.buffer) >= self.buffer_size:
+            self.buffer = self.buffer[1:self.buffer_size:]
+        self.buffer.append(value)
+
 
     def clear(self):
-        self.window = list()
+        self.buffer = list()
