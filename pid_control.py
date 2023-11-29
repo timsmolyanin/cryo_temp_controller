@@ -7,7 +7,8 @@ import time
 from loguru import logger
 
 # Теперь у нас будет один файл со всеми списками топиков, которые нам нужны            <---NEW--->
-from list_of_mqtt_topics import mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid, mqtt_topics_heater_pid
+#from list_of_mqtt_topics import mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid, mqtt_topics_heater_pid
+from list_of_mqtt_topics import mqtt_topics_heater_pid
 
 logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
@@ -53,35 +54,20 @@ class PIDControl(Thread):
         self.name = "PID_control"
         
     def parse_buffer(self, buffer):
-        #Идёт ли разогрев
-        for i in range(len(buffer) - 1):
-            if buffer[i + 1] > buffer[i]:
-                if i == (len(buffer) - 2):
-                    return "In process Up"
-            else:
-                break
-        
-        #Охлаждение
-        for i in range(len(buffer) - 1):
-            if buffer[i + 1] < buffer[i]:
-                if i == (len(buffer) - 2):
-                    return "In process Down"
-            else:
-                break
-        
-        #Достаточно ли напряжения
-        for i in range(len(buffer)):
-            if buffer[i] < self.setpoint_value:
-                if i == (len(buffer) - 1):
-                    return "PID limits Error"
-            else:
-                break
-        
+
         #Есть ли перерегулирование
         for i in range(len(buffer)):
             if (buffer[i] - self.setpoint_value) > (self.setpoint_value * (self.over_regulation_percent / 100)):
                 if i == (len(buffer) - 1):
                     return "Over-regulation"
+            else:
+                break
+
+        #Идёт ли разогрев
+        for i in range(len(buffer) - 1):
+            if buffer[i + 1] >= buffer[i]:
+                if i == (len(buffer) - 2):
+                    return "In process Up"
             else:
                 break
         
@@ -92,6 +78,25 @@ class PIDControl(Thread):
                     return "Ok"
             else:
                 break
+
+        #Охлаждение
+        for i in range(len(buffer) - 1):
+            if buffer[i + 1] <= buffer[i]:
+                if i == (len(buffer) - 2):
+                    return "In process Down"
+            else:
+                break
+
+        
+
+        #Достаточно ли напряжения
+        for i in range(len(buffer)):
+            if buffer[i] < self.setpoint_value:
+                if i == (len(buffer) - 1) and int(self.__pid(self.input_value)) == self.__pid.output_limits[1]:
+                    return "PID limits Error"
+            else:
+                break
+
         return "Unexpected case"
                 
                                          
@@ -111,11 +116,10 @@ class PIDControl(Thread):
         
         #Если не хватает значений, то просто в логгер записываем кол-во элементов в буфере и сам буфер
         if len(buffer) < self.__measurements_buffer_size:
-            logger.debug(f"Значений в буфере: {len(buffer)} / {self.__measurements_buffer_size}")
-            logger.debug(f"Буфер: {buffer}")
             return
         #Если значений хватает, то вызываем parse_buffer, он вёрнёт нам состояние, отталкиваясь от него мы что-то делаем
         else:
+            logger.debug(f"Буфер: {buffer}")
             self.__measurements_buffer = []
             parse_result = self.parse_buffer(buffer)
             match parse_result:
@@ -191,8 +195,9 @@ class PIDControl(Thread):
         self.__pid_min = float(value)
         self.__pid_k = self.pid_max_range / (self.__pid_max - self.__pid_min) 
     
-    def set_pid_current(self, value): # 
+    def set_pid_current(self, value):
         self.__pid.output_limits = (0, float(value) * self.__pid_k)
+        logger.debug(f'Текущее максимальное значение ПИД = {self.__pid.output_limits[1]}')
         logger.debug(f'Текущее значение ПИД = {float(value)}')
         logger.debug(f'Текущее значение ПИД = {float(value) * self.__pid_k}')
    
@@ -228,8 +233,12 @@ class PIDControl(Thread):
         logger.debug(f"setpoint_value = {float(self.setpoint_value)}")
     
     def set_input_value(self, value):
-        self.input_value = float(value)
-        self.__measurements_buffer.append(self.input_value)
+        if self.run_mode != self.mode_wait:
+            self.input_value = float(value)
+            self.__measurements_buffer.append(self.input_value)
+            logger.debug(f"Процент уставки: {int(self.input_value / self.setpoint_value) * 100}")
+            #logger.debug(f"Значений в буфере: {len(self.__measurements_buffer)} / {self.__measurements_buffer_size}")
+
     
 
     def set_buffer_size(self, buffer_size):
