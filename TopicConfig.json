@@ -1,0 +1,88 @@
+{
+	"MeasureModuleOutputs": {
+		"CH1 Heater LDO Current": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CURRENT.txt="
+		},
+
+		"CH1 Heater LDO Power": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_POWER.txt="
+		},
+
+		"CH1 Heater LDO Voltage": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_VOLTAGE.txt="
+		},
+
+		"CH1 MeasureModule Temperature": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_T1.txt="
+		},
+
+		"CH2 MeasureModule Temperature": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_T2.txt="
+		},
+		"CH1 MeasureModule Current": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CH1_CUR.txt="
+		},
+
+		"CH2 MeasureModule Current": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CH2_CUR.txt="
+		}
+	},
+	"MeasureModuleConfigs":{
+		"CH1 SensorModel": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CHANNEL1.txt="
+		},
+		"CH2 SensorModel": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CHANNEL2.txt="
+		}	
+	},
+	"PIDControl": {
+		"CH1 MeasureModule Current Setpoint": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CH1SET.txt="
+		},
+		"CH2 MeasureModule Current Setpoint": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_CH2SET.txt="
+		},
+		"CH1 Heater PID Kp": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_P_PID.txt="
+		},
+		"CH1 Heater PID Ki": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_I_PID.txt="
+		},
+		"CH1 Heater PID Kd": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_D_PID.txt="
+		},
+		"CH1 Heater Voltage MAX Limit": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_VMAX.txt="
+		},
+		"CH1 Heater Temperaure Setpoint": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_TH.txt="
+		},
+		"CH1 Heater PID Status": {
+			"Condition": "False",
+			"Cmd": "MainMenu.TXT_STATUS.txt="
+		}
+	},
+	"HeaterModule": {
+		"Output Voltage State": {
+			"Condition": "True",
+			"0": ["MainMenu.BUT_HEATER_ON.picc=33", "MainMenu.BUT_HEATER_ON.picc2=34", "MainMenu.BUT_HEATER_OFF.picc=33", "MainMenu.BUT_HEATER_OFF.picc2=34"],
+			"1": ["MainMenu.BUT_HEATER_ON.picc=31", "MainMenu.BUT_HEATER_ON.picc2=32", "MainMenu.BUT_HEATER_OFF.picc=31", "MainMenu.BUT_HEATER_OFF.picc2=32"]
+		}
+	}
+}

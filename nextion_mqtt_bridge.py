@@ -7,7 +7,6 @@ import serial
 import struct
 import json
 
-import general_functions
 import list_of_mqtt_topics
 from topic_executor import TopicExecutor
 
@@ -29,21 +28,16 @@ class NextionMqttBridge(Thread):
         self.client_id = f"dialtek-mqtt-{random.randint(0, 100)}"
         self.comport_open_timeout = 10
 
-        self.aver_buff_size = 5
-        self.ch1_temp_list = list()
-        self.ch2_temp_list = list()
-        self.ch1_fitered_temp_topic = "/devices/FilteredValues/controls/CH1 Temperature"
-        self.ch2_fitered_temp_topic = "/devices/FilteredValues/controls/CH2 Temperature"
-
-        self.ldo_current_value = 0.0
-        self.ldo_voltage_value = 0.0
-        self.ldo_power_value = 0.0
-        self.ldo_power_topic = "/devices/FilteredValues/controls/LDO Power"
-
         self.__port_is_open = False
         self.__serial_port_obj = None
 
+        config_file_path = "TopicConfig.json"
+        config_file = open(config_file_path)
+        config = json.loads(config_file.read())
+
         self.serial_connect(self.comport, self.baudrate)
+        self.topic_executor = TopicExecutor(self, config)
+
 
     def run(self):
         """
@@ -70,7 +64,7 @@ class NextionMqttBridge(Thread):
                 self.__port_is_open = serial_port_obj.isOpen()
                 self.__serial_port_obj = serial_port_obj
                 logger.debug(f"Connection is succesfull! {self.__port_is_open}")
-                self.send_welcome_msg()
+                # self.send_welcome_msg()
             except serial.serialutil.SerialException as exc:
                 logger.debug(f"Connection failed {self.__port_is_open}, {exc}")
                 self.__port_is_open = False
@@ -121,12 +115,13 @@ class NextionMqttBridge(Thread):
 
     def nextion_callback(self, data):
         data_list = data.split("/")
-        self.set_mqtt_topic_value(f"/devices/{data_list[0]}/controls/{data_list[1]}/on", data_list[-1])
+        self.mqtt_publish_topic(f"/devices/{data_list[0]}/controls/{data_list[1]}/on", data_list[-1])
     
 
     def error_handler(self):
         if not self.__port_is_open:
             self.serial_connect(self.comport, self.baudrate)
+
 
     def connect_mqtt(self, whois: str) -> mqtt:
         """
@@ -161,16 +156,13 @@ class NextionMqttBridge(Thread):
         except Exception as e:
             print(e)
     
-    def calculate_ldo_power(self, voltage: float, current: float, topic_name: str):
-        self.ldo_power_value = voltage * current
-        self.set_mqtt_topic_value(topic_name, round(self.ldo_power_value, 3))
 
-    def send_welcome_msg(self):
-        next_page_cmd = "page mesurments"
-        for cmd in general_functions.welcome_cmds:
-            self.serial_write(cmd)
-        time.sleep(2)
-        self.serial_write(next_page_cmd)
+    # def send_welcome_msg(self):
+        # next_page_cmd = "page mesurments"
+        # for cmd in general_functions.welcome_cmds:
+        #     self.serial_write(cmd)
+        # time.sleep(2)
+        # self.serial_write(next_page_cmd)
 
 
     def on_message(self, client, userdata, msg):
@@ -179,15 +171,8 @@ class NextionMqttBridge(Thread):
         topic_name = msg.topic.split("/")
         topic_value = msg.payload.decode("utf-8")
         
-        config_file_path = "topic_config.json"
-        config_file = open(config_file_path)
-        config = json.loads(config_file.read())
-        
-        topic_executor = TopicExecutor(self, topic_name[2], topic_name[-1], topic_value, config)
-        
-        print(topic_name, topic_value)
         try:
-            topic_executor.execute()
+            self.topic_executor.execute(topic_name[2], topic_name[-1], topic_value)
         except Exception as e:
             print(e)
 
@@ -202,34 +187,24 @@ class NextionMqttBridge(Thread):
         client.loop_start()
 
 
-    def set_mqtt_topic_value(self, topic_name: str, value):
+    def mqtt_publish_topic(self, topic_name, topic_value):
         """
-        The function sets the value of a specified MQTT topic.
-        
-        :param topic_name: A string representing the name of the MQTT topic where the value will be
-        published
-        :type topic_name: str
-        :param value: The value parameter is an integer that represents the value you want to publish to
-        the MQTT topic
-        :type value: int
         """
-        topic = topic_name
-        publish.single(topic, str(value), hostname=self.broker)
-    
+        publish.single(str(topic_name), str(topic_value), hostname=self.broker)
+
 
 def test():
-    # comport = "COM5"
-    comport = "COM9"
+    # comport = "COM10"     # Windows style
+    comport = "/dev/ttyS4"  # Unix style
     baudrate = 115200
-    # broker = "192.168.44.11"
     broker = "127.0.0.1"
+    # broker = "127.0.0.1"
     port = 1883
     nextion_mqtt_bridge = NextionMqttBridge(mqtt_port=port, mqtt_broker=broker, mqtt_passw=None, mqtt_user=None,
                                             comport_baudrate=baudrate, comport_name=comport)
-    nextion_mqtt_bridge.mqtt_start()
     nextion_mqtt_bridge.start()
+    nextion_mqtt_bridge.mqtt_start()
 
 
 if __name__ == "__main__":
     test()
-    
