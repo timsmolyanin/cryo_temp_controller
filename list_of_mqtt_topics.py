@@ -20,17 +20,67 @@ list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/MEAS DAC Vout", 0),
                         ("/devices/MeasureModuleSetpoints/controls/CH1 State", 0),
                         ("/devices/MeasureModuleSetpoints/controls/CH2 State", 0)
                                  ]
-#Топики для пид модуля
-mqtt_topics_pid = {
-    "input_value": "/devices/FilteredValues/controls/CH1 Temperature", #Входное значение для ПИД'a (float)
+#Топики для пид модуля на нагреватель
+mqtt_topics_heater_pid = {
+    "input_value": "/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Temperature", #Входное значение для ПИД'a (float)
     "output_value" : "/devices/HeaterModule/controls/LDO Counts Set/on", #Выходное значение от ПИД'a (int)
-    "input_setpoint_value" : "/devices/MeasureModuleSetpoints/controls/CH1 Temperature Setpoint", #Входное значение уставки для ПИД'a (float)
-    "input_pid_current" : "", #Установить текущее напряжение для ПИД'a (int)
+    "input_setpoint_value" : "/devices/PIDControl/controls/CH1 Heater Temperaure Setpoint", #Входное значение уставки для ПИД'a (float)
+    "input_pid_current" : "/devices/PIDControl/controls/CH1 Heater Voltage MAX Limit", #Установить текущее напряжение для ПИД'a (int)
     "input_state" : "/devices/HeaterModule/controls/Output Voltage State/on", #Включить/Выключить ПИД регуляцию (0/1)
     "output_state" : "/devices/HeaterModule/controls/Output Voltage State/on",#Включить/Выключить ПИД регуляцию (0/1)
-    "input_PID_values_P_value" : "/devices/MeasureModuleSetpoints/PID Kp",#Коэффициент P (float)
-    "input_PID_values_I_value" : "/devices/MeasureModuleSetpoints/PID Ki",#Коэффициент I (float)
-    "input_PID_values_D_value" : "/devices/MeasureModuleSetpoints/PID Kd",#Коэффициент D (float)
+    "input_PID_values_P_value" : "/devices/PIDControl/controls/CH1 Heater PID Kp",#Коэффициент P (float)
+    "input_PID_values_I_value" : "/devices/PIDControl/controls/CH1 Heater PID Ki",#Коэффициент I (float)
+    "input_PID_values_D_value" : "/devices/PIDControl/controls/CH1 Heater PID Kd",#Коэффициент D (float)
+    
+    # Ключ: название
+    # Значение: топик модуля, котрый будет отвечать за смену
+    # topic_value значения будет содержать название топика, на который надо сменить
+    "change_topic_input_value" : "/devices/ChangerModule/Change input",
+    "change_topic_output_value" : "/devices/ChangerModule/Change output",
+    "change_topic_input_setpoint_value" : "/devices/ChangerModule/Change input",
+    "change_topic_input_state" : "/devices/HeaterModule/controls/Output Voltage State/Change input", 
+    "change_topic_output_state" : "/devices/HeaterModule/controls/Output Voltage State/Change output", 
+    "change_topic_input_PID_value_P_value" : "/devices/ChangerModule/Change input",
+    "change_topic_input_PID_values_I_value" : "/devices/ChangerModule/Change input", 
+    "change_topic_input_PID_values_D_value" : "/devices/ChangerModule/Change input" 
+}
+
+#Топики для пид модуля на датчик канала 1
+mqtt_topics_current_ch1_pid = {
+    "input_value": "/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Current", #Входное значение для ПИД'a (float)
+    "output_value" : "/devices/MeasureModule/controls/CH1 DAC/on", #Выходное значение от ПИД'a (int)
+    "input_setpoint_value" : "/devices/PIDControl/controls/CH1 MeasureModule Current Setpoint", #Входное значение уставки для ПИД'a (float)
+    "input_pid_current" : "/devices/PIDControl/controls/CH1 MeasureModule Current MAX Limit", #Установить текущее напряжение для ПИД'a (int)
+    "input_state" : "/devices/PIDControl/controls/CH1 MeasureModule PID State", #Включить/Выключить ПИД регуляцию (0/1)
+    "output_state" : "/devices/PIDControl/controls/CH1 MeasureModule PID State/on",#Включить/Выключить ПИД регуляцию (0/1)
+    "input_PID_values_P_value" : "/devices/PIDControl/controls/CH1 MeasureModule PID Kp",#Коэффициент P (float)
+    "input_PID_values_I_value" : "/devices/PIDControl/controls/CH1 MeasureModule PID Ki",#Коэффициент I (float)
+    "input_PID_values_D_value" : "/devices/PIDControl/controls/CH1 MeasureModule PID Kd",#Коэффициент D (float)
+    
+    # Ключ: название
+    # Значение: топик модуля, котрый будет отвечать за смену
+    # topic_value значения будет содержать название топика, на который надо сменить
+    "change_topic_input_value" : "/devices/ChangerModule/Change input",
+    "change_topic_output_value" : "/devices/ChangerModule/Change output",
+    "change_topic_input_setpoint_value" : "/devices/ChangerModule/Change input",
+    "change_topic_input_state" : "/devices/HeaterModule/controls/Output Voltage State/Change input", 
+    "change_topic_output_state" : "/devices/HeaterModule/controls/Output Voltage State/Change output", 
+    "change_topic_input_PID_value_P_value" : "/devices/ChangerModule/Change input",
+    "change_topic_input_PID_values_I_value" : "/devices/ChangerModule/Change input", 
+    "change_topic_input_PID_values_D_value" : "/devices/ChangerModule/Change input" 
+}
+
+#Топики для пид модуля на датчик канала 2
+mqtt_topics_current_ch2_pid = {
+    "input_value": "/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Current", #Входное значение для ПИД'a (float)
+    "output_value" : "/devices/MeasureModule/controls/CH2 DAC/on", #Выходное значение от ПИД'a (int)
+    "input_setpoint_value" : "/devices/PIDControl/controls/CH2 MeasureModule Current Setpoint", #Входное значение уставки для ПИД'a (float)
+    "input_pid_current" : "/devices/PIDControl/controls/CH2 MeasureModule Current MAX Limit", #Установить текущее напряжение для ПИД'a (int)
+    "input_state" : "/devices/PIDControl/controls/CH2 MeasureModule PID State", #Включить/Выключить ПИД регуляцию (0/1)
+    "output_state" : "/devices/PIDControl/controls/CH2 MeasureModule PID State/on",#Включить/Выключить ПИД регуляцию (0/1)
+    "input_PID_values_P_value" : "/devices/PIDControl/controls/CH2 MeasureModule PID Kp",#Коэффициент P (float)
+    "input_PID_values_I_value" : "/devices/PIDControl/controls/CH2 MeasureModule PID Ki",#Коэффициент I (float)
+    "input_PID_values_D_value" : "/devices/PIDControl/controls/CH2 MeasureModule PID Kd",#Коэффициент D (float)
     
     # Ключ: название
     # Значение: топик модуля, котрый будет отвечать за смену

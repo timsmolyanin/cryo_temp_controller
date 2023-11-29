@@ -1,5 +1,3 @@
-
-
 from simple_pid import PID
 from threading import Thread
 import paho.mqtt.client as mqtt
@@ -9,16 +7,14 @@ import time
 from loguru import logger
 
 # Теперь у нас будет один файл со всеми списками топиков, которые нам нужны            <---NEW--->
-from list_of_mqtt_topics import mqtt_topics_pid
+from list_of_mqtt_topics import mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid, mqtt_topics_heater_pid
 
 logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
 # The `PIDControl` class is a threaded class that implements a PID controller for a given MQTT broker
 # and port, with setpoint, feedback, and control topics, and specified PID parameters.
 class PIDControl(Thread):
-    def __init__(self, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_password: str, pid_max_range: int,
-                    kp: float, ki: float, kd: float,
-                    parent=None):
+    def __init__(self, mqtt_topic_list, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_password: str, pid_max_range: int, kp, ki, kd, parent=None):
         
         super(PIDControl, self).__init__(parent)
         
@@ -27,11 +23,11 @@ class PIDControl(Thread):
         self.client = ""
         self.client_id = f"dialtek-mqtt-{random.randint(0, 100)}"
         
-        self.topic_list = mqtt_topics_pid
+        self.topic_list = mqtt_topic_list
         
         self.input_value = 0.0
         self.setpoint_value = 0.0
-        self.over_regulation_percent = 1
+        self.over_regulation_percent = 20
         self.state = 0
 
         self.__measurements_buffer_size = 5
@@ -125,27 +121,33 @@ class PIDControl(Thread):
             match parse_result:
                 case "In process Up":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
+                    self.mqtt_publish_topic("/devices/PIDControl/controls/CH1 Heater PID Status/on", parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "In process Down":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
+                    self.mqtt_publish_topic("/devices/PIDControl/controls/CH1 Heater PID Status/on", parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "PID limits Error":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
+                    self.mqtt_publish_topic("/devices/PIDControl/controls/CH1 Heater PID Status/on", parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Over-regulation":
                     
                     self.mqtt_publish_topic(self.topic_list["output_state"], 0)
+                    self.mqtt_publish_topic("/devices/PIDControl/controls/CH1 Heater PID Status/on", parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Ok":
                     #mqtt_publish_topic(self, <имя топика?>, parse_result)
+                    self.mqtt_publish_topic("/devices/PIDControl/controls/CH1 Heater PID Status/on", parse_result)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Unexpected case":
                     logger.debug(f"Состояние: {parse_result}")
+                    self.mqtt_publish_topic("/devices/PIDControl/controls/CH1 Heater PID Status/on", parse_result)
                     logger.debug(f"Буфер: {buffer}")
                     return
 
@@ -183,37 +185,41 @@ class PIDControl(Thread):
     def set_pid_limits_max(self, value):
         self.__pid_max = float(value) #50
         self.__pid_k = self.pid_max_range / (self.__pid_max - self.__pid_min) #65535 / (max - min)
-    
+        logger.debug(f'MAX limit = {float(value)}')
         
     def set_pid_limits_min(self, value):
         self.__pid_min = float(value)
         self.__pid_k = self.pid_max_range / (self.__pid_max - self.__pid_min) 
     
-    def set_pid_current(self, value): # 0 - 50, 20 
-        self.__pid.output_limits(0, float(value) * self.__pid_k)
+    def set_pid_current(self, value): # 
+        self.__pid.output_limits = (0, float(value) * self.__pid_k)
+        logger.debug(f'Текущее значение ПИД = {float(value)}')
+        logger.debug(f'Текущее значение ПИД = {float(value) * self.__pid_k}')
    
     
     def set_pid_kp_value(self, value):
         
         self.__kp = float(value)
         self.__pid.Kp = self.__kp
+        logger.debug(f'Текущее значение P = {float(value)}')
+
         
     def set_pid_ki_value(self, value):
         
         self.__ki = float(value)
         self.__pid.Ki = self.__ki
+        logger.debug(f'Текущее значение I = {float(value)}')
         
         
     def set_pid_kd_value(self, value):
         
         self.__kd = float(value)
         self.__pid.Kd = self.__kd
+        logger.debug(f'Текущее значение D = {float(value)}')
     
     def set_pid_tunings(self):
         
         self.__pid.tunings(self.__kp, self.__ki, self.__kd)  
-
-
 
     def set_setpoint_value(self, setpoint):
         self.setpoint_value = float(setpoint)
@@ -223,7 +229,7 @@ class PIDControl(Thread):
     
     def set_input_value(self, value):
         self.input_value = float(value)
-        self.__measurements_buffer.append(value)
+        self.__measurements_buffer.append(self.input_value)
     
 
     def set_buffer_size(self, buffer_size):
@@ -235,11 +241,6 @@ class PIDControl(Thread):
         
         self.__control_loop_period = float(loop_period)
         
-        
-
-
-
-
     def connect_mqtt(self, whois: str) -> mqtt:
         """
         The function `connect_mqtt` connects to an MQTT broker and returns the MQTT client.
@@ -303,7 +304,7 @@ class PIDControl(Thread):
             self.topic_list["input_setpoint_value"] : self.set_setpoint_value,
             self.topic_list["input_value"] : self.set_input_value,
             self.topic_list["input_state"] : self.set_state,
-            self.topic_list["input_pid_current"] : self.set_pid_current,
+            self.topic_list["input_pid_current"] : self.set_pid_current, 
             self.topic_list["input_PID_values_P_value"] : self.set_pid_kp_value,
             self.topic_list["input_PID_values_I_value"] : self.set_pid_ki_value,
             self.topic_list["input_PID_values_D_value"] : self.set_pid_kd_value,
@@ -317,17 +318,10 @@ class PIDControl(Thread):
         else:
             try:
                 config[topic_name](topic_value)
-            except:
-                logger.debug(f"{self.name}: Ошибка в распознавании топика")
-                
-        
-        
-        
-        
-
+            except Exception as ex:
+                logger.debug(f"{self.name}: Ошибка в распознавании топика - {topic_name}")
                 
     def mqtt_start(self):
-        
         self.client = self.connect_mqtt(self.name)
         self.subscribe(self.client)
         self.client.loop_start()
@@ -342,16 +336,26 @@ class PIDControl(Thread):
 
 
 def test():
-    kp = 16.0
-    ki = 3.6
-    kd = 6.0
     broker = "192.168.44.11"
     port = 1883
 
+    pid_heater_test = PIDControl(mqtt_topics_heater_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=65535, ki=0, kd=0, kp=0)
+    pid_heater_test.set_pid_limits_min(0)
+    pid_heater_test.set_pid_limits_max(50)
+    pid_heater_test.mqtt_start()
+    pid_heater_test.start()
 
-    pid_test = PIDControl(broker, port, kp=kp, ki=ki, kd=kd, mqtt_user=None, mqtt_passw=None)
-    pid_test.mqtt_start()
-    pid_test.start()
+    # pid_current_ch1_test = PIDControl(mqtt_topics_current_ch1_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=65535, ki=0, kd=0, kp=0)
+    # pid_current_ch1_test.set_pid_limits_min(0)
+    # pid_current_ch1_test.set_pid_limits_max(950)
+    # pid_current_ch1_test.mqtt_start()
+    # pid_current_ch1_test.start()
+
+    # pid_current_ch2_test = PIDControl(mqtt_topics_current_ch1_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=30000, ki=0, kd=0, kp=0)
+    # pid_current_ch2_test.mqtt_start()
+    # pid_current_ch2_test.start()
+
+    
         
 
 if __name__ == "__main__":
