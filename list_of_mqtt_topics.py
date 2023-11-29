@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """ Список mqtt топиков для каждого модуля. Стандарт: mqtt_topics_<название модуля> """
 
 list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/MEAS DAC Vout", 0),
@@ -109,3 +110,34 @@ mqtt_topics_system_module = {
     "input_update_files_list" : "/a/b/c/update_files_list", #Обновить список файлов в системе (None)
     "output_update_files_list" : "/a/b/c/update_files_list" #Отправить список файлов из системы на дисплей(None)
 }
+=======
+list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/Output Voltage State", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 ConfigFname", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 FilterBufferSize", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 FilterType", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 Heater FilterBufferSize", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 Heater FilterType", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 SensorModel", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 ConfigFname", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 FilterBufferSize", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 FilterType", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 SensorModel", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 Heater LDO Current", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 Heater LDO Power", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 Heater LDO Voltage", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Current", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 MeasureModule State", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Temperature", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Current", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH2 MeasureModule State", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Temperature", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Kd", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Kp", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Ki", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Status", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater Temperaure Setpoint", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater Voltage MAX Limit", 0),
+                        ("/devices/PIDControl/controls/CH1 MeasureModule Current Setpoint", 0),
+                        ("/devices/PIDControl/controls/CH2 MeasureModule Current Setpoint", 0),
+                                 ]
+>>>>>>> nextion_mqtt_bridge

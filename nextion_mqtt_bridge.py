@@ -115,7 +115,7 @@ class NextionMqttBridge(Thread):
 
     def nextion_callback(self, data):
         data_list = data.split("/")
-        self.set_mqtt_topic_value(f"/devices/{data_list[0]}/controls/{data_list[1]}/on", data_list[-1])
+        self.mqtt_publish_topic(f"/devices/{data_list[0]}/controls/{data_list[1]}/on", data_list[-1])
     
 
     def error_handler(self):
@@ -194,9 +194,10 @@ class NextionMqttBridge(Thread):
 
 
 def test():
-    comport = "COM10"
+    # comport = "COM10"     # Windows style
+    comport = "/dev/ttyS4"  # Unix style
     baudrate = 115200
-    broker = "192.168.44.10"
+    broker = "127.0.0.1"
     # broker = "127.0.0.1"
     port = 1883
     nextion_mqtt_bridge = NextionMqttBridge(mqtt_port=port, mqtt_broker=broker, mqtt_passw=None, mqtt_user=None,
@@ -207,4 +208,3 @@ def test():
 
 if __name__ == "__main__":
     test()
-    
