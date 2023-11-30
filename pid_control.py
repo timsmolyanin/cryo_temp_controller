@@ -52,6 +52,7 @@ class PIDControl(Thread):
         self.__pid = PID(self.__kp, self.__ki, self.__kd, setpoint=self.setpoint_value, output_limits=(0, self.pid_max_range))
         self.iterations_to_skip_after_start = 2
         self.current_iteration = 0
+        self.init_value = 0
         
         self.name = "PID_control"
         
@@ -64,8 +65,6 @@ class PIDControl(Thread):
                     return "Over-regulation"
             else:
                 break
-        
-        
                 
         #Идёт ли разогрев
         for i in range(len(buffer) - 1):
@@ -126,11 +125,12 @@ class PIDControl(Thread):
         if self.current_iteration < self.iterations_to_skip_after_start:
             self.current_iteration = self.current_iteration + 1
             self.__measurements_buffer.clear()
+            self.init_value = self.input_value
             return
         #Если значений хватает, то вызываем parse_buffer, он вёрнёт нам состояние, отталкиваясь от него мы что-то делаем
         else:
             logger.debug(f"Буфер: {buffer}")
-            installation_percent = round( (self.input_value / self.setpoint_value) * 100)
+            installation_percent = round( ((self.input_value - self.init_value) / (self.setpoint_value - self.init_value)) * 100)
             logger.debug(f"Процент уставки: {installation_percent}")
             self.__measurements_buffer = []
             parse_result = self.parse_buffer(buffer)
