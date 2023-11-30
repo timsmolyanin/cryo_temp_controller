@@ -9,8 +9,6 @@ from loguru import logger
 # Теперь у нас будет один файл со всеми списками топиков, которые нам нужны            <---NEW--->
 #from list_of_mqtt_topics import mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid, mqtt_topics_heater_pid
 from list_of_mqtt_topics import mqtt_topics_heater_pid
-#from list_of_mqtt_topics import mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid, mqtt_topics_heater_pid
-from list_of_mqtt_topics import mqtt_topics_heater_pid
 
 logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
@@ -64,14 +62,6 @@ class PIDControl(Thread):
             if (buffer[i] - self.setpoint_value) > (self.setpoint_value * (self.over_regulation_percent / 100)):
                 if i == (len(buffer) - 1):
                     return "Over-regulation"
-            else:
-                break
-
-        #Идёт ли разогрев
-        for i in range(len(buffer) - 1):
-            if buffer[i + 1] >= buffer[i]:
-                if i == (len(buffer) - 2):
-                    return "In process Up"
             else:
                 break
         
