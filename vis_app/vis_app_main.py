@@ -20,6 +20,7 @@ class vis_app(vis_UIMainWindow):
     outfile_status = 'default_output.csv'
     writing_status = 'enabled'
 
+
     def __init__(self, parent=None):
         self.get_dir()
         self.init_logger()
@@ -45,10 +46,11 @@ class vis_app(vis_UIMainWindow):
         # self.mqtt_interface.start()
         
         #test:
-        self.test_timer = QtCore.QTimer()
+        # self.test_timer = QtCore.QTimer()
         # self.test_timer.setInterval(500)
         # self.test_timer.timeout.connect(self.generate_test_values)
         # self.test_timer.start()
+        
         self.update_timer = QtCore.QTimer()
         self.update_timer.setInterval(1000)
         self.update_timer.timeout.connect(self.update_lines)
@@ -86,7 +88,7 @@ class vis_app(vis_UIMainWindow):
     def init_logger(self):
         self.error_logger = logging.getLogger('error_logger')
         self.error_logger.setLevel(logging.WARNING)
-        self.error_logger_handler = logging.FileHandler(filename=f'{self.cur_path}/log.txt', mode='a')
+        self.error_logger_handler = logging.FileHandler(filename=f'{self.cur_path}/log.log', mode='a')
         self.error_logger_handler.setFormatter(logging.Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
         self.error_logger.addHandler(self.error_logger_handler)
 
@@ -122,41 +124,51 @@ class vis_app(vis_UIMainWindow):
 
 
     def update_lines(self):
-        cur_time = time.time()
-        for cur_metric in self.metrics_names:
-            self.update_line(cur_metric, cur_time)
-        self.file_editor.add_data(self.metrics_names, cur_time)
-        self.auto_downsampling(self.cur_points_number)
-        self.update_status()
+        try:
+            cur_time = time.time()
+            for cur_metric in self.metrics_names:
+                self.update_line(cur_metric, cur_time)
+            self.file_editor.add_data(self.metrics_names, cur_time)
+            self.auto_downsampling(self.cur_points_number)
+            self.update_status()
+        except Exception as err:
+            self.resolve_exception(err)
 
 
     def update_line(self, metric_name, cur_time):
-        cur_line = getattr(self, f'{metric_name}_line')
-        val_list =  getattr(self, f'{metric_name}_value')
-        if self.cur_time_range == 0: # if no time range specified
-            cur_line.setData(val_list[0].tolist() , val_list[1].tolist())
-            return len(val_list[0])
-        left_time_border = cur_time - (self.cur_time_range * 60)
-        left_border_idx = 0
-        for i in range (len(val_list[0])-1, 0, -1): # search for minimum timestamp to display
-            if val_list[0][i]<left_time_border:
-                left_border_idx = i
-                break
-        cut_val_list = val_list[:, left_border_idx:]
-        cur_line.setData(cut_val_list[0].tolist() , cut_val_list[1].tolist())
-        # return len()
+        try:
+            cur_line = getattr(self, f'{metric_name}_line')
+            val_list =  getattr(self, f'{metric_name}_value')
+            if self.cur_time_range == 0: # if no time range specified
+                cur_line.setData(val_list[0].tolist() , val_list[1].tolist())
+                return len(val_list[0])
+            left_time_border = cur_time - (self.cur_time_range * 60)
+            left_border_idx = 0
+            for i in range (len(val_list[0])-1, 0, -1): # search for minimum timestamp to display
+                if val_list[0][i]<left_time_border:
+                    left_border_idx = i
+                    break
+            cut_val_list = val_list[:, left_border_idx:]
+            cur_line.setData(cut_val_list[0].tolist() , cut_val_list[1].tolist())
+        except Exception as err:
+            self.resolve_exception(err)
+        
 
 
-    def add_new_value(self, metric_name, cur_value):
-        val_list = getattr(self, f'{metric_name}_value')
-        if len(val_list[0,:]) > self.max_data_array_size:
-            val_list = val_list[:, 1:]
-        cur_time = time.time()
-        cur_entry = np.array([[cur_time],[cur_value]])
-        val_list = np.append(val_list, cur_entry, axis=1)
-        setattr(self, f'{metric_name}_value', val_list)
-        metr_checkbox = getattr(self, f'{metric_name}_checkbox')
-        metr_checkbox.update_value(cur_value)
+    def add_new_value(self, metric_name_value):
+        try:
+            metric_name, cur_value = metric_name_value
+            val_list = getattr(self, f'{metric_name}_value')
+            if len(val_list[0,:]) > self.max_data_array_size:
+                val_list = val_list[:, 1:]
+            cur_time = time.time()
+            cur_entry = np.array([[cur_time],[cur_value]])
+            val_list = np.append(val_list, cur_entry, axis=1)
+            setattr(self, f'{metric_name}_value', val_list)
+            metr_checkbox = getattr(self, f'{metric_name}_checkbox')
+            metr_checkbox.update_value(cur_value)
+        except Exception as err:
+            self.resolve_exception(err)
        
 
     def auto_downsampling(self, NOf_points):
@@ -167,14 +179,20 @@ class vis_app(vis_UIMainWindow):
 
     
     def change_time_range(self, new_time_range):
-        self.cur_time_range = int(new_time_range)
+        try:
+            self.cur_time_range = int(new_time_range)
+        except Exception as err:
+            self.resolve_exception(err, 1)
 
 
     def update_status(self, msg=None):
-        if msg is not None:
-            self.status_bar_label.setText(f'{msg}')
-            return
-        self.status_bar_label.setText(f'{self.connection_status}; Data writing {self.writing_status}; Output file: {self.outfile_status}')
+        try:
+            if msg is not None:
+                self.status_bar_label.setText(f'{msg}')
+                return
+            self.status_bar_label.setText(f'{self.connection_status}; Data writing {self.writing_status}; Output file: {self.outfile_status}')
+        except Exception as err:
+            self.resolve_exception(err, 1)
 
 
     def resolve_exception(self, err:Exception, severity=0):
@@ -284,7 +302,8 @@ class mqtt_comm_iface(QtCore.QObject):
     def subscribe(self):
         try:
             print(self.in_topics)
-            self.client.subscribe(self.in_topics) 
+            for cur_topic in self.in_topics:
+                self.client.subscribe((cur_topic,0)) 
             self.client.on_message = self.on_message
         except Exception as e:
             print('subscribe')
@@ -313,7 +332,7 @@ class mqtt_comm_iface(QtCore.QObject):
             
             metric_name = msg.topic.split("/")[-1]
             value = float(msg.payload.decode())
-            self.read_signal.emit(metric_name, value)
+            self.read_signal.emit((metric_name, value))
         except Exception as err:
             print('on_message')
             self.resolve_exception(type(err)(f'value read error: {err}'), 0)
@@ -347,7 +366,7 @@ class mqtt_comm_iface(QtCore.QObject):
         except Exception as err:
             self.resolve_exception(err, 1)
         
-
+    
     def ip_format_check(self, host:str):
         from ipaddress import ip_address
         try:
@@ -355,7 +374,8 @@ class mqtt_comm_iface(QtCore.QObject):
             return True
         except ValueError:
             return False
-        
+
+
 if __name__ == '__main__':
 
     QtCore.QLocale.setDefault(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
