@@ -1,25 +1,38 @@
 """ Список mqtt топиков для каждого модуля. Стандарт: mqtt_topics_<название модуля> """
 
-list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/MEAS DAC Vout", 0),
-                        ("/devices/HeaterModule/controls/MEAS SW REG Vout", 0),
-                        ("/devices/HeaterModule/controls/MEAS LDO REG Vout", 0),
-                        ("/devices/HeaterModule/controls/MEAS Load Current", 0),
-                        ("/devices/HeaterModule/controls/MEAS REG Vdelta", 0),
-                        ("/devices/HeaterModule/controls/OverCrrent Status", 0),
-                        ("/devices/HeaterModule/controls/Output Voltage State", 0),
-                        ("/devices/MeasureModule/controls/CH1 Voltage", 0),
-                        ("/devices/MeasureModule/controls/CH2 Voltage", 0),
-                        ("/devices/MeasureModule/controls/CH1 Resistance", 0),
-                        ("/devices/MeasureModule/controls/CH2 Resistance", 0),
-                        ("/devices/FilteredValues/controls/CH1 Current", 0),
-                        ("/devices/FilteredValues/controls/CH1 Temperature", 0),
-                        ("/devices/FilteredValues/controls/CH2 Temperature", 0),
-                        ("/devices/FilteredValues/controls/CH2 Current", 0),
-                        ("/devices/FilteredValues/controls/LDO Power", 0),
-                        ("/devices/FilteredValues/controls/LDO Voltage", 0),
-                        ("/devices/MeasureModuleSetpoints/controls/CH1 State", 0),
-                        ("/devices/MeasureModuleSetpoints/controls/CH2 State", 0)
+list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/Output Voltage State", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 ConfigFname", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 FilterBufferSize", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 FilterType", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 Heater FilterBufferSize", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 Heater FilterType", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH1 SensorModel", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 ConfigFname", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 FilterBufferSize", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 FilterType", 0),
+                        ("/devices/MeasureModuleConfigs/controls/CH2 SensorModel", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 Heater LDO Current", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 Heater LDO Power", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 Heater LDO Voltage", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Current", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 MeasureModule State", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Temperature", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Current", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH2 MeasureModule State", 0),
+                        ("/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Temperature", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Kd", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Kp", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Ki", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater PID Status", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater Temperaure Setpoint", 0),
+                        ("/devices/PIDControl/controls/CH1 Heater Voltage MAX Limit", 0),
+                        ("/devices/PIDControl/controls/CH1 MeasureModule Current Setpoint", 0),
+                        ("/devices/PIDControl/controls/CH2 MeasureModule Current Setpoint", 0),
+                        ("/devices/network/controls/Ethernet 2 IP", 0),
+                        ("/devices/network/controls/Wi-Fi IP", 0),
+                        ("/devices/SystemModule/controls/Config Files List", 0),
                                  ]
+
 #Топики для пид модуля на нагреватель
 mqtt_topics_heater_pid = {
     "input_value": "/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Temperature", #Входное значение для ПИД'a (float)
@@ -29,6 +42,7 @@ mqtt_topics_heater_pid = {
     "input_state" : "/devices/HeaterModule/controls/Output Voltage State/on", #Включить/Выключить ПИД регуляцию (0/1)
     "output_state" : "/devices/HeaterModule/controls/Output Voltage State/on",#Включить/Выключить ПИД регуляцию (0/1)
     "output_state_str" : "/devices/PIDControl/controls/CH1 Heater PID Status/on", #Состояние в текстовом формате
+    "output_state_num" : "/devices/PIDControl/controls/CH1 Heater PID StatusCode/on", #Состояние в текстовом формате
     "input_PID_values_P_value" : "/devices/PIDControl/controls/CH1 Heater PID Kp",#Коэффициент P (float)
     "input_PID_values_I_value" : "/devices/PIDControl/controls/CH1 Heater PID Ki",#Коэффициент I (float)
     "input_PID_values_D_value" : "/devices/PIDControl/controls/CH1 Heater PID Kd",#Коэффициент D (float)
@@ -54,6 +68,7 @@ mqtt_topics_current_ch1_pid = {
     "input_pid_current" : "/devices/PIDControl/controls/CH1 MeasureModule Current MAX Limit", #Установить текущее напряжение для ПИД'a (int)
     "input_state" : "/devices/PIDControl/controls/CH1 MeasureModule PID State", #Включить/Выключить ПИД регуляцию (0/1)
     "output_state" : "/devices/PIDControl/controls/CH1 MeasureModule PID State/on",#Включить/Выключить ПИД регуляцию (0/1)
+    "output_state_str" : "/a/b/c/on", #Состояние в текстовом формате
     "input_PID_values_P_value" : "/devices/PIDControl/controls/CH1 MeasureModule PID Kp",#Коэффициент P (float)
     "input_PID_values_I_value" : "/devices/PIDControl/controls/CH1 MeasureModule PID Ki",#Коэффициент I (float)
     "input_PID_values_D_value" : "/devices/PIDControl/controls/CH1 MeasureModule PID Kd",#Коэффициент D (float)
@@ -79,6 +94,7 @@ mqtt_topics_current_ch2_pid = {
     "input_pid_current" : "/devices/PIDControl/controls/CH2 MeasureModule Current MAX Limit", #Установить текущее напряжение для ПИД'a (int)
     "input_state" : "/devices/PIDControl/controls/CH2 MeasureModule PID State", #Включить/Выключить ПИД регуляцию (0/1)
     "output_state" : "/devices/PIDControl/controls/CH2 MeasureModule PID State/on",#Включить/Выключить ПИД регуляцию (0/1)
+    "output_state_str" : "/a/b/d/on", #Состояние в текстовом формате
     "input_PID_values_P_value" : "/devices/PIDControl/controls/CH2 MeasureModule PID Kp",#Коэффициент P (float)
     "input_PID_values_I_value" : "/devices/PIDControl/controls/CH2 MeasureModule PID Ki",#Коэффициент I (float)
     "input_PID_values_D_value" : "/devices/PIDControl/controls/CH2 MeasureModule PID Kd",#Коэффициент D (float)
@@ -97,16 +113,16 @@ mqtt_topics_current_ch2_pid = {
 }
 
 mqtt_topics_system_module = {
-    "input_wifi_state": "/a/b/c/wifi_state", #Вкл/Выкл вай фай модуль (0/1)
-    "input_wifi_mode" : "/a/b/c/wifi_mode", #Режим работы вай фай модуля (client/hotspot)
-    "input_wifi_client_ssid" : "/a/b/c/wifi_client_ssid", #Имя сети для режима клиента (any)
-    "input_wifi_client_password" : "/a/b/c/wifi_client_password", #Пароль сетя для режима клиента (any)
-    "input_wifi_hotspot_ssid" : "/a/b/c/wifi_hotspot_ssid", #Имя сети для режима хотспот'a (any)
-    "input_wifi_hotspot_password" : "/a/b/c/wifi_hotspot_password", #Пароль сетя для режима хотспот'a (any)
-    "input_eth_mode" : "/a/b/c/eth_mode", #Режим ethernet соединения (static/dhcp)
-    "input_eth_ip" : "/a/b/c/eth_ip", #Ip для ethernet соединения (any)
-    "input_eth_mask" : "/a/b/c/eth_mask", #Маска сети для ethernet соединения (any)
+    "input_wifi_state": "/devices/SystemModule/controls/WiFi State", #Вкл/Выкл вай фай модуль (0/1)
+    "input_wifi_mode" : "/devices/SystemModule/controls/WiFi Mode", #Режим работы вай фай модуля (client/hotspot)
+    "input_wifi_client_ssid" : "/devices/SystemModule/controls/WiFi Client SSID", #Имя сети для режима клиента (any)
+    "input_wifi_client_password" : "/devices/SystemModule/controls/WiFi Client Password", #Пароль сетя для режима клиента (any)
+    "input_wifi_hotspot_ssid" : "/devices/SystemModule/controls/WiFi Hotspot SSID", #Имя сети для режима хотспот'a (any)
+    "input_wifi_hotspot_password" : "/devices/SystemModule/controls/WiFi Hotspot Password", #Пароль сетя для режима хотспот'a (any)
+    "input_eth_mode" : "/devices/SystemModule/controls/ETH0 Mode", #Режим ethernet соединения (static/dhcp)
+    "input_eth_ip" : "/devices/SystemModule/controls/ETH0 IP", #Ip для ethernet соединения (any)
+    "input_eth_mask" : "/devices/SystemModule/controls/ETH0 Mask", #Маска сети для ethernet соединения (any)
     "input_eth_gateway" : "/a/b/c/eth_gateway", #Шлюз для ethernet соединения (any)
-    "input_update_files_list" : "/a/b/c/update_files_list", #Обновить список файлов в системе (None)
-    "output_update_files_list" : "/a/b/c/update_files_list" #Отправить список файлов из системы на дисплей(None)
+    "input_update_files_list" : "/devices/SystemModule/controls/Update Config Files Event", #Обновить список файлов в системе (None)
+    "output_update_files_list" : "/devices/SystemModule/controls/Config Files List" #Отправить список файлов из системы на дисплей(None)
 }

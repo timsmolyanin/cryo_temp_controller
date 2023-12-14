@@ -6,9 +6,10 @@ import random
 import time
 from loguru import logger
 
-# Теперь у нас будет один файл со всеми списками топиков, которые нам нужны            <---NEW--->
+# Теперь у нас будет один файл со всеми списками топиков, которые нам нужны
+
 #from list_of_mqtt_topics import mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid, mqtt_topics_heater_pid
-from list_of_mqtt_topics import mqtt_topics_heater_pid
+from list_of_mqtt_topics import mqtt_topics_heater_pid, mqtt_topics_current_ch1_pid, mqtt_topics_current_ch2_pid
 
 logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
@@ -28,20 +29,16 @@ class PIDControl(Thread):
         
         self.input_value = 0.0
         self.setpoint_value = 0.0
-        self.over_regulation_percent = 1
+        self.over_regulation_percent = 0.1
         self.state = 0
 
         self.__measurements_buffer_size = 5
         self.__measurements_buffer = []
         
-        # self.pid_max_range = 65535
         self.pid_max_range = pid_max_range
         self.__kp = kp
         self.__ki = ki
         self.__kd = kd
-        # self.__kp = 7826.9163248793075
-        # self.__ki = 25.267158409925372
-        # self.__kd = 0.0
         
         self.__control_loop_period = 1
         
@@ -65,6 +62,14 @@ class PIDControl(Thread):
                     return "Over-regulation"
             else:
                 break
+        
+        #Всё впорядке
+        for i in range(len(buffer)):
+            if abs(buffer[i] - self.setpoint_value) <= (self.setpoint_value * (self.over_regulation_percent / 100)):
+                if i == (len(buffer) - 1):
+                    return "Ok"
+            else:
+                break
                 
         #Идёт ли разогрев
         for i in range(len(buffer) - 1):
@@ -79,14 +84,6 @@ class PIDControl(Thread):
             if buffer[i + 1] < buffer[i]:
                 if i == (len(buffer) - 2):
                     return "In process Down"
-            else:
-                break
-
-        #Всё впорядке
-        for i in range(len(buffer)):
-            if abs(buffer[i] - self.setpoint_value) <= (self.setpoint_value * (self.over_regulation_percent / 100)):
-                if i == (len(buffer) - 1):
-                    return "Ok"
             else:
                 break
 
@@ -131,39 +128,43 @@ class PIDControl(Thread):
         else:
             logger.debug(f"Буфер: {buffer}")
             installation_percent = round( ((self.input_value - self.init_value) / (self.setpoint_value - self.init_value)) * 100)
+            logger.debug(f"INIT VALUE: {self.init_value}")
+            if installation_percent < 0:
+                installation_percent = 0
             logger.debug(f"Процент уставки: {installation_percent}")
             self.__measurements_buffer = []
             parse_result = self.parse_buffer(buffer)
             match parse_result:
                 case "In process Up":
-                    #mqtt_publish_topic(self, <имя топика?>, parse_result)
-                    self.mqtt_publish_topic(self.topic_list["output_state_str"], parse_result + " " + str(installation_percent) + "%")
+                    in_process_up = "ПИД активирован. Процент уставки:"
+                    self.mqtt_publish_topic(self.topic_list["output_state_str"], in_process_up + " " + str(installation_percent) + "%")
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "In process Down":
-                    #mqtt_publish_topic(self, <имя топика?>, parse_result)
-                    self.mqtt_publish_topic(self.topic_list["output_state_str"], parse_result + " " + str(installation_percent) + "%")
+                    in_process_down = "ПИД активирован. Процент уставки:"
+                    self.mqtt_publish_topic(self.topic_list["output_state_str"], in_process_down + " " + str(installation_percent) + "%")
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "PID limits Error":
-                    #mqtt_publish_topic(self, <имя топика?>, parse_result)
-                    self.mqtt_publish_topic(self.topic_list["output_state_str"], parse_result + " " + str(installation_percent) + "%")
+                    limits_error = "Не хватает напряжения"
+                    self.mqtt_publish_topic(self.topic_list["output_state_str"], limits_error)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Over-regulation":
-                    
-                    self.mqtt_publish_topic(self.topic_list["output_state"], 0)
-                    self.mqtt_publish_topic(self.topic_list["output_state_str"], parse_result + " " + str(installation_percent) + "%")
+                    over_regulation = "Перерегулирование."
+                    # self.mqtt_publish_topic(self.topic_list["output_state"], 0)
+                    self.mqtt_publish_topic(self.topic_list["output_state_str"], over_regulation)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Ok":
-                    #mqtt_publish_topic(self, <имя топика?>, parse_result)
-                    self.mqtt_publish_topic(self.topic_list["output_state_str"], parse_result + " " + str(installation_percent) + "%")
+                    ok = "Идет поддержание температуры"
+                    self.mqtt_publish_topic(self.topic_list["output_state_str"], ok)
                     logger.debug(f"Состояние: {parse_result}")
                     return
                 case "Unexpected case":
+                    unexpected_case = "Неопределенное состояние"
                     logger.debug(f"Состояние: {parse_result}")
-                    self.mqtt_publish_topic(self.topic_list["output_state_str"], parse_result + " " + str(installation_percent) + "%")
+                    self.mqtt_publish_topic(self.topic_list["output_state_str"], unexpected_case)
                     logger.debug(f"Буфер: {buffer}")
                     return
 
@@ -199,7 +200,7 @@ class PIDControl(Thread):
 
 
     def set_pid_limits_max(self, value):
-        self.__pid_max = float(value) #50
+        self.__pid_max = float(value) 
         self.__pid_k = self.pid_max_range / (self.__pid_max - self.__pid_min) #65535 / (max - min)
         logger.debug(f'Значение верхней границы (В) ПИД регулятора установлено на: {float(value)}')
         
@@ -286,7 +287,6 @@ class PIDControl(Thread):
     
 
     def subscribe(self, client: mqtt):
-        
         for key, value in self.topic_list.items():
             if not "output" in key:
                 client.subscribe(value)
@@ -350,32 +350,27 @@ class PIDControl(Thread):
 
     #Публикует топик с именем topic_name и значением topic_value
     def mqtt_publish_topic(self, topic_name, topic_value):
-        
         publish.single(str(topic_name), str(topic_value), hostname=self.broker)
     
     
-
-
 
 def test():
     broker = "192.168.44.11"
     port = 1883
 
-    pid_heater_test = PIDControl(mqtt_topics_heater_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=65535, ki=0, kd=0, kp=0)
-    pid_heater_test.set_pid_limits_min(0)
-    pid_heater_test.set_pid_limits_max(50)
-    pid_heater_test.mqtt_start()
-    pid_heater_test.start()
+    pid_current_ch1_test = PIDControl(mqtt_topics_current_ch1_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=65535, ki=15.8764268160044748, kd=0.9, kp=15.24685919461204)
+    pid_current_ch1_test.set_pid_limits_min(0)
+    pid_current_ch1_test.set_pid_limits_max(950)
+    pid_current_ch1_test.over_regulation_percent = 0.5
+    pid_current_ch1_test.mqtt_start()
+    pid_current_ch1_test.start()
 
-    # pid_current_ch1_test = PIDControl(mqtt_topics_current_ch1_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=65535, ki=0, kd=0, kp=0)
-    # pid_current_ch1_test.set_pid_limits_min(0)
-    # pid_current_ch1_test.set_pid_limits_max(950)
-    # pid_current_ch1_test.mqtt_start()
-    # pid_current_ch1_test.start()
-
-    # pid_current_ch2_test = PIDControl(mqtt_topics_current_ch1_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=30000, ki=0, kd=0, kp=0)
-    # pid_current_ch2_test.mqtt_start()
-    # pid_current_ch2_test.start()
+    pid_current_ch2_test = PIDControl(mqtt_topics_current_ch2_pid, broker, port, mqtt_user=None, mqtt_password=None, pid_max_range=65535, ki=10.2906382256080534, kd=0, kp=3.193398544311137)
+    pid_current_ch2_test.set_pid_limits_min(0)
+    pid_current_ch2_test.set_pid_limits_max(950)
+    pid_current_ch2_test.over_regulation_percent = 0.5
+    pid_current_ch2_test.mqtt_start()
+    pid_current_ch2_test.start()
 
     
         

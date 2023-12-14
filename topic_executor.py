@@ -1,6 +1,6 @@
 class TopicExecutor:
     
-    def __init__(self,nextion_mqtt_bridge , group_name, module_name, topic_value, config):
+    def __init__(self,nextion_mqtt_bridge, config):
         self.nextion_mqtt_bridge = nextion_mqtt_bridge
         
         self.config = config
@@ -13,16 +13,16 @@ class TopicExecutor:
             module = self.config[self.group_name][self.module_name]
         except KeyError:
             raise KeyError('Ключ не найден, топик не прописан', self.group_name, self.module_name)
-
         
         if module['Condition'] == 'False':
-            # cmd = module['Cmd']
-            # full_cmd = f'{cmd}"' + self.topic_value + '"'
-            # self.nextion_mqtt_bridge.serial_write(full_cmd)
-            cmds = module[str(self.topic_value)]
-            for cmd in cmds:
-                full_cmd = f'{cmd}"' + self.topic_value + '"'
-                self.nextion_mqtt_bridge.serial_write(full_cmd)
+            try:
+                cmds = module["Cmd"]
+                for cmd in cmds:
+                    full_cmd = f'{cmd}\"{self.topic_value}\"'
+                    self.nextion_mqtt_bridge.serial_write(full_cmd)
+            except Exception as e:
+                print(e)
+          
 
         if module['Condition'] == 'True':
             try:

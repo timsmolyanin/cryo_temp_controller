@@ -64,7 +64,7 @@ class NextionMqttBridge(Thread):
                 self.__port_is_open = serial_port_obj.isOpen()
                 self.__serial_port_obj = serial_port_obj
                 logger.debug(f"Connection is succesfull! {self.__port_is_open}")
-                # self.send_welcome_msg()
+                self.send_welcome_msg()
             except serial.serialutil.SerialException as exc:
                 logger.debug(f"Connection failed {self.__port_is_open}, {exc}")
                 self.__port_is_open = False
@@ -83,6 +83,7 @@ class NextionMqttBridge(Thread):
             response = ""
             try:
                 response = self.__serial_port_obj.readline()
+                # print(response)
                 if response == b'':
                     # Nextion send empty string every second
                     pass
@@ -157,12 +158,9 @@ class NextionMqttBridge(Thread):
             print(e)
     
 
-    # def send_welcome_msg(self):
-        # next_page_cmd = "page mesurments"
-        # for cmd in general_functions.welcome_cmds:
-        #     self.serial_write(cmd)
-        # time.sleep(2)
-        # self.serial_write(next_page_cmd)
+    def send_welcome_msg(self):
+        next_page_cmd = "page MainMenu"
+        self.serial_write(next_page_cmd)
 
 
     def on_message(self, client, userdata, msg):
@@ -170,7 +168,6 @@ class NextionMqttBridge(Thread):
         """
         topic_name = msg.topic.split("/")
         topic_value = msg.payload.decode("utf-8")
-        
         try:
             self.topic_executor.execute(topic_name[2], topic_name[-1], topic_value)
         except Exception as e:
@@ -194,8 +191,8 @@ class NextionMqttBridge(Thread):
 
 
 def test():
-    # comport = "COM10"     # Windows style
-    comport = "/dev/ttyS4"  # Unix style
+    # comport = "COM10"
+    comport = "/dev/ttyS4"
     baudrate = 115200
     broker = "127.0.0.1"
     # broker = "127.0.0.1"

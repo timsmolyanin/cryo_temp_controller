@@ -2,87 +2,106 @@
 	"MeasureModuleOutputs": {
 		"CH1 Heater LDO Current": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CURRENT.txt="
+			"Cmd": ["MainMenu.TXT_CURRENT.txt=", "HeaterSett.TXT_CURENT.txt="]
 		},
 
 		"CH1 Heater LDO Power": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_POWER.txt="
+			"Cmd": ["MainMenu.TXT_POWER.txt=", "HeaterSett.TXT_POWER.txt="]
 		},
 
 		"CH1 Heater LDO Voltage": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_VOLTAGE.txt="
+			"Cmd": ["MainMenu.TXT_VOLTAGE.txt=", "HeaterSett.TXT_VOLTAGE.txt="]
 		},
 
 		"CH1 MeasureModule Temperature": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_T1.txt="
+			"Cmd": ["MainMenu.TXT_T1.txt=", "TempSett.TXT_TEMP1_VAL.txt="]
 		},
 
 		"CH2 MeasureModule Temperature": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_T2.txt="
+			"Cmd": ["MainMenu.TXT_T2.txt=", "TempSett.TXT_TEMP2_VAL.txt="]
 		},
 		"CH1 MeasureModule Current": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CH1_CUR.txt="
+			"Cmd": ["MainMenu.TXT_CH1_CUR.txt=", "SensorsSett.CH1_CUR_TEMP.txt="]
 		},
 
 		"CH2 MeasureModule Current": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CH2_CUR.txt="
+			"Cmd": ["MainMenu.TXT_CH2_CUR.txt=", "SensorsSett.CH2_CUR_TEMP.txt="]
 		}
 	},
 	"MeasureModuleConfigs":{
 		"CH1 SensorModel": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CHANNEL1.txt="
+			"Cmd": ["MainMenu.TXT_CHANNEL1.txt="]
 		},
 		"CH2 SensorModel": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CHANNEL2.txt="
+			"Cmd": ["MainMenu.TXT_CHANNEL2.txt="]
 		}	
 	},
 	"PIDControl": {
 		"CH1 MeasureModule Current Setpoint": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CH1SET.txt="
+			"Cmd": ["MainMenu.TXT_CH1SET.txt=", "SensorsSett.CH1_SET_TEMP.txt="]
 		},
 		"CH2 MeasureModule Current Setpoint": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_CH2SET.txt="
+			"Cmd": ["MainMenu.TXT_CH2SET.txt=", "SensorsSett.CH2_SET_TEMP.txt="]
 		},
 		"CH1 Heater PID Kp": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_P_PID.txt="
+			"Cmd": ["MainMenu.TXT_P_PID.txt=", "HeaterSett.TXT_P_PID.txt="]
 		},
 		"CH1 Heater PID Ki": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_I_PID.txt="
+			"Cmd": ["MainMenu.TXT_I_PID.txt=", "HeaterSett.TXT_I_PID.txt="]
 		},
 		"CH1 Heater PID Kd": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_D_PID.txt="
+			"Cmd": ["MainMenu.TXT_D_PID.txt=", "HeaterSett.TXT_D_PID.txt="]
 		},
 		"CH1 Heater Voltage MAX Limit": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_VMAX.txt="
+			"Cmd": ["MainMenu.TXT_VMAX.txt="]
 		},
 		"CH1 Heater Temperaure Setpoint": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_TH.txt="
+			"Cmd": ["MainMenu.TXT_TH.txt=", "TempSett.TXT_T2_TEMP.txt="]
 		},
 		"CH1 Heater PID Status": {
 			"Condition": "False",
-			"Cmd": "MainMenu.TXT_STATUS.txt="
+			"Cmd": ["MainMenu.TXT_STATUS.txt=", "Settings.TXT_STATUS.txt=", "SensorsSett.TXT_STATUS.txt=", "TempSett.TXT_STATUS.txt=", "HeaterSett.TXT_STATUS.txt=",
+					"ConffileSett.TXT_STATUS.txt=", "NetworkSett.TXT_STATUS.txt=", "RelaySett.TXT_STATUS.txt=", "FiltersSett.TXT_STATUS.txt=", "Graph.TXT_STATUS.txt="]
 		}
 	},
 	"HeaterModule": {
 		"Output Voltage State": {
 			"Condition": "True",
-			"0": ["MainMenu.BUT_HEATER_ON.picc=33", "MainMenu.BUT_HEATER_ON.picc2=34", "MainMenu.BUT_HEATER_OFF.picc=33", "MainMenu.BUT_HEATER_OFF.picc2=34"],
-			"1": ["MainMenu.BUT_HEATER_ON.picc=31", "MainMenu.BUT_HEATER_ON.picc2=32", "MainMenu.BUT_HEATER_OFF.picc=31", "MainMenu.BUT_HEATER_OFF.picc2=32"]
+			"0": ["MainMenu.BUT_HEATER_ON.picc=33", "MainMenu.BUT_HEATER_ON.picc2=32", "MainMenu.BUT_HEATER_OFF.picc=33", "MainMenu.BUT_HEATER_OFF.picc2=34",
+				  "HeaterSett.BUT_HEATER_ON.picc=33", "HeaterSett.BUT_HEATER_ON.picc2=32", "HeaterSett.BUT_HEATER_OFF.picc=33", "HeaterSett.BUT_HEATER_OFF.picc2=34"],
+			"1": ["MainMenu.BUT_HEATER_ON.picc=31", "MainMenu.BUT_HEATER_ON.picc2=32", "MainMenu.BUT_HEATER_OFF.picc=31", "MainMenu.BUT_HEATER_OFF.picc2=34",
+				  "HeaterSett.BUT_HEATER_ON.picc=31", "HeaterSett.BUT_HEATER_ON.picc2=32", "HeaterSett.BUT_HEATER_OFF.picc=31", "HeaterSett.BUT_HEATER_OFF.picc2=34"]
+		}
+	},
+	"network": {
+		"Ethernet 2 IP": {
+			"Condition": "False",
+			"Cmd": ["NetworkSett.TXT_ETH_IP.txt="]
+		},
+		"Wi-Fi IP": {
+			"Condition": "False",
+			"Cmd": ["NetworkSett.TXT_WIFI_IP.txt="]
+		}
+	},
+	"SystemModule": {
+		"Config Files List": {
+			"Condition": "False",
+			"Cmd": ["ConffileSett.FILE_SELECT.path="]
 		}
 	}
 }
