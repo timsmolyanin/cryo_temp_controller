@@ -32,11 +32,7 @@ class SystemModule(Thread):
             self.topic_list["input_eth_ip"] : self.set_eth_ip,
             self.topic_list["input_eth_mask"] : self.set_eth_mask,
             self.topic_list["input_eth_gateway"] : self.set_eth_gateway,
-            self.topic_list["input_update_files_list"] : self.update_file_list,          #/root/wk/measure_module/Sensors/ConfigFolder
-            self.topic_list["input_user_scale_min"] : self.set_user_plot_min,
-            self.topic_list["input_user_scale_max"] : self.set_user_plot_max,
-            self.topic_list["input_temperature1"] : self.rescaling_temp1,
-            self.topic_list["input_temperature2"] : self.rescaling_temp2,
+            self.topic_list["input_update_files_list"] : self.update_file_list          #/root/wk/measure_module/Sensors/ConfigFolder
         }
         
         self.mqtt = mqtt_module.Mqtt(mqtt_broker, mqtt_port, mqtt_user, mqtt_password, self.name, self.on_message_config, self.topic_list)
@@ -55,33 +51,6 @@ class SystemModule(Thread):
         self.eth_ip = ""
         self.eth_mask = ""
         self.eth_gateway = ""
-
-        self.user_plot_min = 75
-        self.user_plot_max = 330
-
-    def rescaling_temp1(self, value):
-        temp1 = float(value)
-        rescaled_temp1 = self.input_waveform_scaling(temp1)
-        self.mqtt.publish_topic(self.topic_list["output_rescaled_temp1"], rescaled_temp1)
-        # print(rescaled_temp1)
-
-    def rescaling_temp2(self, value):
-        temp2 = float(value)
-        rescaled_temp2 = self.input_waveform_scaling(temp2)
-        self.mqtt.publish_topic(self.topic_list["output_rescaled_temp2"], rescaled_temp2)
-
-    def input_waveform_scaling(self, value: float):
-        nextion_min, nextion_max = 0, 255
-        user_range = self.user_plot_max - self.user_plot_min  
-        nextion_range = nextion_max - nextion_min  
-        converted = int(((value - self.user_plot_min) * nextion_range / user_range) + nextion_min)
-        return converted
-    
-    def set_user_plot_min(self, value):
-        self.user_plot_min = int(value)
-    
-    def set_user_plot_max(self, value):
-        self.user_plot_max = int(value)
         
     def update_file_list(self, value):
         directory_path = "/root/wk/measure_module/Sensors/ConfigFolder"

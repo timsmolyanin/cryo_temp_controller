@@ -126,11 +126,15 @@ mqtt_topics_system_module = {
     "input_eth_mask" : "/devices/SystemModule/controls/ETH0 Mask", #Маска сети для ethernet соединения (any)
     "input_eth_gateway" : "/a/b/c/eth_gateway", #Шлюз для ethernet соединения (any)
     "input_update_files_list" : "/devices/SystemModule/controls/Update Config Files Event", #Обновить список файлов в системе (None)
-    "input_user_scale_min": "/devices/SystemModule/controls/User Scale Min",
-    "input_user_scale_max": "/devices/SystemModule/controls/User Scale Max",
     "input_temperature1": "/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Temperature",
     "input_temperature2": "/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Temperature",
-    "output_update_files_list" : "/devices/SystemModule/controls/Config Files List", #Отправить список файлов из системы на дисплей(None)
+    "output_update_files_list" : "/devices/SystemModule/controls/Config Files List" #Отправить список файлов из системы на дисплей(None)
+}
+
+
+mqtt_topics_plotter_module = {
+    "input_user_scale_min": "/devices/SystemModule/controls/User Scale Min",
+    "input_user_scale_max": "/devices/SystemModule/controls/User Scale Max",
     "output_rescaled_temp1" : "/devices/SystemModule/controls/Rescaled Temp1", #
     "output_rescaled_temp2" : "/devices/SystemModule/controls/Rescaled Temp2" #
 }
