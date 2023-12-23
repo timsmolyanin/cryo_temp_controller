@@ -68,7 +68,7 @@ class Mqtt(Thread):
             try:
                 self.on_message_config[topic_name](topic_value)
             except:
-                logger.debug(f"{self.name}: Ошибка в распознавании топика")
+                logger.debug(f"{self.name}: Ошибка в распознавании топика {topic_name}")
                      
     def start(self):
         self.client = self.connect_mqtt(self.name)

@@ -63,6 +63,7 @@ class SystemModule(Thread):
         temp1 = float(value)
         rescaled_temp1 = self.input_waveform_scaling(temp1)
         self.mqtt.publish_topic(self.topic_list["output_rescaled_temp1"], rescaled_temp1)
+        # print(rescaled_temp1)
 
     def rescaling_temp2(self, value):
         temp2 = float(value)

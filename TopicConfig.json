@@ -17,12 +17,12 @@
 
 		"CH1 MeasureModule Temperature": {
 			"Condition": "False",
-			"Cmd": ["MainMenu.TXT_T1.txt=", "TempSett.TXT_TEMP1_VAL.txt="]
+			"Cmd": ["MainMenu.TXT_T1.txt=", "TempSett.TXT_TEMP1_VAL.txt=", "Graph.REAL_TEMP1.txt="]
 		},
 
 		"CH2 MeasureModule Temperature": {
 			"Condition": "False",
-			"Cmd": ["MainMenu.TXT_T2.txt=", "TempSett.TXT_TEMP2_VAL.txt="]
+			"Cmd": ["MainMenu.TXT_T2.txt=", "TempSett.TXT_TEMP2_VAL.txt=", "Graph.REAL_TEMP2.txt="]
 		},
 		"CH1 MeasureModule Current": {
 			"Condition": "False",
