@@ -1,5 +1,3 @@
-
-
 from threading import Thread
 import paho.mqtt.client as mqtt
 import paho.mqtt.publish as publish
@@ -8,9 +6,9 @@ from loguru import logger
 
 logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
 
+
 class Mqtt(Thread):
     def __init__(self, mqtt_broker:str, mqtt_port:int, mqtt_user: str, mqtt_password:str, module_name:str, on_message_config:dict, topic_list:dict, parent=None):
-        
         super(Mqtt, self).__init__(parent)
         
         self.broker = mqtt_broker
@@ -25,7 +23,6 @@ class Mqtt(Thread):
 
 
     def connect_mqtt(self, whois: str) -> mqtt:
-
         logger.debug(f"MQTT client in {whois} started connect to broker")
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
@@ -40,21 +37,18 @@ class Mqtt(Thread):
         return mqtt_client
     
     def unsubscribe(self, client: mqtt):
-        
         for key, value in self.topic_list.items():
             if not "output" in key:
                 client.unsubscribe(value)
     
 
     def subscribe(self, client: mqtt):
-        
         for key, value in self.topic_list.items():
             if not "output" in key:
                 client.subscribe(value)
         client.on_message = self.on_message
         
     def change_topic(self, topic_to_change, topic):
-        
         self.unsubscribe(self.client)
         self.topic_list[topic_to_change[13:]] = topic
         self.subscribe(self.client)
@@ -65,7 +59,6 @@ class Mqtt(Thread):
                 return key
     
     def on_message(self, client, userdata, msg):
-        
         topic_name = msg.topic 
         topic_value = msg.payload.decode("utf-8")
         
@@ -78,13 +71,11 @@ class Mqtt(Thread):
                 logger.debug(f"{self.name}: Ошибка в распознавании топика")
                      
     def start(self):
-        
         self.client = self.connect_mqtt(self.name)
         self.subscribe(self.client)
         self.client.loop_start()
 
     #Публикует топик с именем topic_name и значением topic_value
-    def publish_topic(self, topic_name, topic_value):
-
+    def publish_topic(self, topic_name: str, topic_value):
         publish.single(str(topic_name), str(topic_value), hostname=self.broker)
     

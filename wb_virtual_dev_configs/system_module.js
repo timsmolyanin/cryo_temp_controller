@@ -55,6 +55,26 @@ defineVirtualDevice("SystemModule", {
       type: "text",
       value: "",
       readonly: false
+      },
+      "User Scale Min": {
+        type: "value",
+        value: "",
+        readonly: false
+      },
+      "User Scale Max": {
+        type: "value",
+        value: "",
+        readonly: false
+      },
+      "Rescaled Temp1": {
+        type: "value",
+        value: "",
+        readonly: false
+      },
+      "Rescaled Temp2": {
+        type: "value",
+        value: "",
+        readonly: false
       }
     }
   });

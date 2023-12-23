@@ -102,6 +102,14 @@
 		"Config Files List": {
 			"Condition": "False",
 			"Cmd": ["ConffileSett.FILE_SELECT.path="]
+		},
+		"Rescaled Temp1": {
+			"Condition": "False",
+			"Cmd": ["Graph.ch1_temp.txt="]
+		},
+		"Rescaled Temp2": {
+			"Condition": "False",
+			"Cmd": ["Graph.ch2_temp.txt="]
 		}
 	}
 }
