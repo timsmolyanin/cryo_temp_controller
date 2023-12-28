@@ -33,6 +33,7 @@ list_of_mqtt_topics = [ ("/devices/HeaterModule/controls/Output Voltage State", 
                         ("/devices/SystemModule/controls/Config Files List", 0),
                         ("/devices/SystemModule/controls/Rescaled Temp1", 0),
                         ("/devices/SystemModule/controls/Rescaled Temp2", 0),
+                        ("/devices/SystemModule/controls/UPD", 0),
                                  ]
 
 #Топики для пид модуля на нагреватель
@@ -133,8 +134,14 @@ mqtt_topics_system_module = {
 
 
 mqtt_topics_plotter_module = {
-    "input_user_scale_min": "/devices/SystemModule/controls/User Scale Min",
-    "input_user_scale_max": "/devices/SystemModule/controls/User Scale Max",
+    "input_user_scale_min": "/devices/SystemModule/controls/User Scale Min/on",
+    "input_user_scale_max": "/devices/SystemModule/controls/User Scale Max/on",
+    "input_temperature1": "/devices/MeasureModuleOutputs/controls/CH1 MeasureModule Temperature",
+    "input_temperature2": "/devices/MeasureModuleOutputs/controls/CH2 MeasureModule Temperature",
+    "input_update_scaling": "none",
+    
+    "output_set_timer" : "/devices/SystemModule/controls/UPD",
+    
     "output_rescaled_temp1" : "/devices/SystemModule/controls/Rescaled Temp1", #
     "output_rescaled_temp2" : "/devices/SystemModule/controls/Rescaled Temp2" #
 }

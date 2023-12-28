@@ -3,11 +3,8 @@ import time
 import paho.mqtt.client as mqtt
 import paho.mqtt.publish as publish
 import mqtt_module
-import os
-import nmcli
 from loguru import logger
 import time
-import ipaddress
 
 
 from list_of_mqtt_topics import mqtt_topics_plotter_module
@@ -39,38 +36,64 @@ class PlotterModule(Thread):
 
         self.buffer_temp_1 = []
         self.buffer_temp_2 = []
-        self.buffer_size = 100
+        self.buffer_size = 1000
+        
+        self.is_drawing_buffer = False
+        
+        self.temp_gap = 3
+        self.temp1_current_i = 3
+        self.temp2_current_i = 3
 
-        self.publish_delay = 1
 
 
     def update_scaling(self):
-        self.publish_delay = 0.05
-        for i in range(self.buffer_size):
-
+        self.mqtt.publish_topic(self.topic_list["output_set_timer"], 10)
+        self.is_drawing_buffer = True
+        
+        print(f"Размер буфера: {len(self.buffer_temp_2)}")
+        
+        
+        for i in range(min(len(self.buffer_temp_2), len(self.buffer_temp_1))):
+            
+                
             self.publish_temperature("output_rescaled_temp1", self.buffer_temp_1[i])
             self.publish_temperature("output_rescaled_temp2", self.buffer_temp_2[i])
-
-        self.publish_delay = 1
+            #logger.debug(f"{self.buffer_temp_1[i]}")
+            #logger.debug(f"{self.buffer_temp_2[i]}")
+            time.sleep(0.01)
+        
+        self.is_drawing_buffer = False
+        self.mqtt.publish_topic(self.topic_list["output_set_timer"], 1000)
 
 
     def set_temperature1(self, value):
-        temp1 = float(value)
+        if self.temp1_current_i == self.temp_gap:
+            self.temp1_current_i = 0
+            temp1 = float(value)
 
-        self.buffer_temp_1.append(temp1)
-        if (self.buffer_temp_1.count() >= self.buffer_size):
-            self.buffer_temp_1.pop(0)
-
-        self.publish_temperature("output_rescaled_temp1", temp1)
+            self.buffer_temp_1.append(temp1)
+            if (len(self.buffer_temp_1) >= self.buffer_size):
+                self.buffer_temp_1.pop(0)
+            
+            if not self.is_drawing_buffer:
+                self.publish_temperature("output_rescaled_temp1", temp1)
+            return
+        
+        self.temp1_current_i += 1
 
     def set_temperature2(self, value):
-        temp2 = float(value)
+        if self.temp2_current_i == self.temp_gap:
+            self.temp2_current_i = 0
+            temp2 = float(value)
 
-        self.buffer_temp_2.append(temp2)
-        if (self.buffer_temp_2.count() >= self.buffer_size):
-            self.buffer_temp_2.pop(0)
-
-        self.publish_temperature("output_rescaled_temp2", temp2)
+            self.buffer_temp_2.append(temp2)
+            if (len(self.buffer_temp_2) >= self.buffer_size):
+                self.buffer_temp_2.pop(0)
+                
+            if not self.is_drawing_buffer:
+                self.publish_temperature("output_rescaled_temp2", temp2)
+            return
+        self.temp2_current_i += 1
 
 
 
@@ -88,11 +111,13 @@ class PlotterModule(Thread):
     
     def set_user_plot_min(self, value):
         self.user_plot_min = int(value)
+        
 
     
     def set_user_plot_max(self, value):
         self.user_plot_max = int(value)
         
+        self.update_scaling()
     
 def test():
     broker = "127.0.0.1"
@@ -100,7 +125,7 @@ def test():
     port = 1883
     test = PlotterModule(broker, port, 'abc', 'abc')
     while True:
-        time.sleep(test.publish_delay)
+        time.sleep(1)
 
 
 if __name__ == "__main__":

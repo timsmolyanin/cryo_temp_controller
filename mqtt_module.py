@@ -67,8 +67,10 @@ class Mqtt(Thread):
         else:
             try:
                 self.on_message_config[topic_name](topic_value)
-            except:
+            except Exception as ex:
                 logger.debug(f"{self.name}: Ошибка в распознавании топика {topic_name}")
+                logger.debug(f"{self.name}: А именно {ex}")
+                
                      
     def start(self):
         self.client = self.connect_mqtt(self.name)

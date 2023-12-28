@@ -22,6 +22,15 @@ class TopicExecutor:
                     self.nextion_mqtt_bridge.serial_write(full_cmd)
             except Exception as e:
                 print(e)
+        
+        if module['Condition'] == 'Integer':
+            try:
+                cmds = module["Cmd"]
+                for cmd in cmds:
+                    full_cmd = f'{cmd}{self.topic_value}'
+                    self.nextion_mqtt_bridge.serial_write(full_cmd)
+            except Exception as e:
+                print(e)
           
 
         if module['Condition'] == 'True':

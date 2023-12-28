@@ -191,8 +191,8 @@ class NextionMqttBridge(Thread):
 
 
 def test():
-    # comport = "COM10"
-    comport = "/dev/ttyS4"
+    comport = "COM9"
+    #comport = "/dev/ttyS4"
     baudrate = 115200
     broker = "127.0.0.1"
     # broker = "127.0.0.1"

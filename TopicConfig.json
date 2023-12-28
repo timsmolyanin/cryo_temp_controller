@@ -110,6 +110,10 @@
 		"Rescaled Temp2": {
 			"Condition": "False",
 			"Cmd": ["Graph.ch2_temp.txt="]
+		},
+		"UPD": {
+			"Condition": "Integer",
+			"Cmd": ["Graph.TIMER_GRAPH.tim="]
 		}
 	}
 }
